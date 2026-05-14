@@ -11,7 +11,7 @@ from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
 from modules.evidence_manager import init_evidence_tree
 from modules.idor_bola import analyze_idor_from_replay
-from modules.idor import run_safe_idor_replay
+from modules.idor import generate_idor_plan, run_idor_test
 from core.job_queue import JobQueue
 
 
@@ -56,9 +56,17 @@ def main():
     idor.add_argument('target')
     idor.add_argument('--replay-file', required=True)
 
-    idor_safe = sub.add_parser('idor-safe-replay')
-    idor_safe.add_argument('target')
-    idor_safe.add_argument('--session-file', required=True)
+    idor_plan = sub.add_parser('idor-plan')
+    idor_plan.add_argument('target')
+    idor_plan.add_argument('--replay-file', required=True)
+    idor_plan.add_argument('--scope', default='scope.yaml')
+
+    idor_test = sub.add_parser('idor-test')
+    idor_test.add_argument('target')
+    idor_test.add_argument('--plan', required=True)
+    idor_test.add_argument('--user-a-token', required=True)
+    idor_test.add_argument('--user-b-token', required=True)
+    idor_test.add_argument('--scope', default='scope.yaml')
 
     capture = sub.add_parser('capture-traffic')
     capture.add_argument('url')
@@ -119,8 +127,14 @@ def main():
         result = analyze_idor_from_replay(args.target, args.replay_file)
         print(result)
 
-    elif args.command == 'idor-safe-replay':
-        result = run_safe_idor_replay(args.target, args.session_file)
+    elif args.command == 'idor-plan':
+        validate_scope(args.target, args.scope)
+        result = generate_idor_plan(args.target, args.replay_file)
+        print(result)
+
+    elif args.command == 'idor-test':
+        validate_scope(args.target, args.scope)
+        result = run_idor_test(args.target, args.plan, args.user_a_token, args.user_b_token)
         print(result)
 
     elif args.command == 'capture-traffic':

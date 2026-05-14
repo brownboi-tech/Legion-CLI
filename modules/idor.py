@@ -11,129 +11,109 @@ from core.approval import require_approval
 from modules.evidence_manager import evidence_path, init_evidence_tree
 
 ID_PATTERN = re.compile(r'(?<![A-Za-z0-9])(?:\d{2,}|[0-9a-fA-F]{8,})(?![A-Za-z0-9])')
-SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
 
 @dataclass
-class ReplayPlan:
-    name: str
+class IDORPlanItem:
+    method: str
     original_url: str
     mutated_url: str
-    method: str
     object_id: str
+    source: str
     risk_note: str
 
 
-def _read_sessions(path: str) -> list[dict]:
-    data = json.loads(Path(path).read_text())
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        return [data]
-    return []
+def _read_json(path: Path):
+    return json.loads(path.read_text())
 
 
-def _extract_ids_from_text(text: str) -> list[str]:
-    return sorted(set(ID_PATTERN.findall(text or '')))
+def _extract_json_ids(body: str) -> list[str]:
+    try:
+        data = json.loads(body)
+        return ID_PATTERN.findall(json.dumps(data))
+    except Exception:
+        return ID_PATTERN.findall(body or '')
 
 
-def _mutate_first_id(value: str) -> str:
-    if value.isdigit():
-        return str(int(value) + 1)
-    return value[::-1]
+def _mutate_id(value: str) -> str:
+    return str(int(value) + 1) if value.isdigit() else value[::-1]
 
 
 def _mutate_url(url: str, object_id: str) -> str:
-    if object_id in url:
-        return url.replace(object_id, _mutate_first_id(object_id), 1)
-
     parts = urlsplit(url)
+    path = parts.path.replace(object_id, _mutate_id(object_id), 1) if object_id in parts.path else parts.path
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    for key, val in query.items():
-        if object_id in val:
-            query[key] = val.replace(object_id, _mutate_first_id(object_id), 1)
-            return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
-    return url
+    for k, v in query.items():
+        if object_id in v:
+            query[k] = v.replace(object_id, _mutate_id(object_id), 1)
+    return urlunsplit((parts.scheme, parts.netloc, path, urlencode(query), parts.fragment))
 
 
-def generate_safe_replay_plans(session_file: str) -> list[ReplayPlan]:
-    sessions = _read_sessions(session_file)
-    plans: list[ReplayPlan] = []
+def generate_idor_plan(target: str, replay_file: str) -> dict:
+    init_evidence_tree(target)
+    replay_path = Path('evidence') / target / 'replay' / replay_file
+    sessions = _read_json(replay_path)
+    if isinstance(sessions, dict):
+        sessions = [sessions]
 
-    for idx, item in enumerate(sessions, start=1):
-        request = item.get('request', {}) if isinstance(item, dict) else {}
-        method = str(request.get('method', 'GET')).upper()
-        url = str(request.get('url', ''))
-        body = str(request.get('body', ''))
-        object_ids = sorted(set(_extract_ids_from_text(url) + _extract_ids_from_text(body)))
+    plan: list[IDORPlanItem] = []
+    for entry in sessions:
+        req = entry.get('request', {}) if isinstance(entry, dict) else {}
+        method = str(req.get('method', 'GET')).upper()
+        url = str(req.get('url', ''))
+        body = str(req.get('body', ''))
 
-        for obj_id in object_ids:
-            mutated = _mutate_url(url, obj_id)
-            plans.append(
-                ReplayPlan(
-                    name=f'idor-plan-{idx}-{obj_id}',
-                    original_url=url,
-                    mutated_url=mutated,
+        ids = sorted(set(ID_PATTERN.findall(url) + _extract_json_ids(body)))
+        for object_id in ids:
+            plan.append(
+                IDORPlanItem(
                     method=method,
-                    object_id=obj_id,
-                    risk_note='Non-destructive replay only; unsafe methods skipped by default.',
+                    original_url=url,
+                    mutated_url=_mutate_url(url, object_id),
+                    object_id=object_id,
+                    source='replay',
+                    risk_note='Plan only. Replay requires explicit human approval.',
                 )
             )
 
-    return plans
+    plan_file = evidence_path(target, 'ai-analysis', 'idor_plan.json')
+    plan_file.write_text(json.dumps([asdict(p) for p in plan], indent=2))
+    return {'target': target, 'plan_file': str(plan_file), 'items': len(plan)}
 
 
 def _similarity(a: str, b: str) -> float:
     return round(SequenceMatcher(None, a or '', b or '').ratio(), 4)
 
 
-def run_safe_idor_replay(target: str, session_file: str, timeout: int = 20) -> dict:
-    init_evidence_tree(target)
-    plans = generate_safe_replay_plans(session_file)
-
+def run_idor_test(target: str, plan_file: str, user_a_token: str, user_b_token: str, timeout: int = 20) -> dict:
+    plans = _read_json(Path(plan_file))
     results = []
-    skipped = []
 
     for plan in plans:
-        if plan.method not in SAFE_METHODS:
-            skipped.append({'plan': asdict(plan), 'reason': f'Unsafe method {plan.method} auto-skipped'})
+        method = str(plan.get('method', 'GET')).upper()
+        if method != 'GET':
             continue
 
-        require_approval(
-            f'Replay safe IDOR test? {plan.method} {plan.mutated_url}',
-            'approval',
-        )
+        mutated_url = plan.get('mutated_url', '')
+        require_approval(f'Run IDOR GET replay against {mutated_url}?', 'approval')
 
-        try:
-            original_resp = requests.request(plan.method, plan.original_url, timeout=timeout)
-            mutated_resp = requests.request(plan.method, plan.mutated_url, timeout=timeout)
-        except Exception as exc:
-            results.append({'plan': asdict(plan), 'error': str(exc)})
-            continue
+        headers_a = {'Authorization': f'Bearer {user_a_token}'} if user_a_token else {}
+        headers_b = {'Authorization': f'Bearer {user_b_token}'} if user_b_token else {}
 
-        original_body = original_resp.text or ''
-        mutated_body = mutated_resp.text or ''
+        resp_a = requests.get(mutated_url, headers=headers_a, timeout=timeout)
+        resp_b = requests.get(mutated_url, headers=headers_b, timeout=timeout)
 
+        body_a = resp_a.text or ''
+        body_b = resp_b.text or ''
         results.append(
             {
-                'plan': asdict(plan),
-                'comparison': {
-                    'status_original': original_resp.status_code,
-                    'status_mutated': mutated_resp.status_code,
-                    'body_len_original': len(original_body),
-                    'body_len_mutated': len(mutated_body),
-                    'content_similarity': _similarity(original_body, mutated_body),
-                },
+                'plan': plan,
+                'user_a': {'status': resp_a.status_code, 'length': len(body_a)},
+                'user_b': {'status': resp_b.status_code, 'length': len(body_b)},
+                'content_similarity': _similarity(body_a, body_b),
             }
         )
 
-    output_file = evidence_path(target, 'ai-analysis', 'idor_safe_replay_results.json')
-    output_file.write_text(json.dumps({'results': results, 'skipped': skipped}, indent=2))
-
-    return {
-        'target': target,
-        'plans': len(plans),
-        'executed': len(results),
-        'skipped': len(skipped),
-        'output': str(output_file),
-    }
+    out = evidence_path(target, 'ai-analysis', 'idor_results.json')
+    out.write_text(json.dumps(results, indent=2))
+    return {'target': target, 'results': len(results), 'output': str(out)}
