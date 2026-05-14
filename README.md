@@ -217,3 +217,26 @@ python3 main.py scope-from-text program-name --file scope_text.txt
 
 This creates:
 - `scopes/program-name.yaml`
+
+## Advanced Security Workflows
+
+Generate stronger test plans (saved in `evidence/<target>/ai-analysis/`):
+
+```bash
+python3 main.py security-workflow <target> --type race --scope scope.yaml
+python3 main.py security-workflow <target> --type payment --scope scope.yaml
+python3 main.py security-workflow <target> --type ssrf --scope scope.yaml
+python3 main.py security-workflow <target> --type smuggling --scope scope.yaml
+python3 main.py security-workflow <target> --type mobile --scope scope.yaml
+python3 main.py security-workflow <target> --type cloud --scope scope.yaml
+python3 main.py security-workflow <target> --type business --scope scope.yaml
+```
+
+These produce structured, high-value workflow plans for:
+- race conditions
+- payment logic abuse
+- SSRF chain analysis
+- request smuggling
+- mobile reversing
+- cloud misconfiguration/exploitation checks
+- complex business logic workflows

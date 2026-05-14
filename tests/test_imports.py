@@ -10,3 +10,5 @@ def test_module_imports():
     import modules.js_analyzer  # noqa: F401
     import modules.idor  # noqa: F401
     import modules.oauth  # noqa: F401
+
+    import modules.security_workflows  # noqa: F401

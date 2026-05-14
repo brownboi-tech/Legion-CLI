@@ -26,3 +26,8 @@ def test_scope_file_missing_is_handled():
     r = run_cmd(['recon', 'example.com', '--scope', 'missing-scope.yaml'])
     assert r.returncode != 0
     assert 'Scope file not found' in (r.stdout + r.stderr)
+
+
+def test_security_workflow_command_exists():
+    r = run_cmd(['--help'])
+    assert 'security-workflow' in r.stdout
