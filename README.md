@@ -185,3 +185,18 @@ Expected:
 - `main.py --help` prints command list
 - `main.py tools` prints installed/missing tools
 - pytest smoke tests pass (or report missing pytest package)
+
+## Dashboard + Agent Mode
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env
+cp scope.example.yaml scope.yaml
+python3 main.py dashboard --host 127.0.0.1 --port 8080
+```
+
+Open:
+
+```bash
+open http://127.0.0.1:8080
+```

@@ -1,0 +1,9 @@
+<!doctype html><html><body><h1>Legion Dashboard v1</h1>
+<input id="target" placeholder="target.com"/><button onclick="run('/api/run/recon-pipeline')">Run Recon</button><button onclick="loadTools()">Load Tools</button>
+<h3>Tool status</h3><pre id="tools"></pre><h3>Evidence/results</h3><pre id="results"></pre><h3>Latest logs/output</h3><pre id="logs"></pre>
+<h3>Chat</h3><input id="chat"/><button onclick="chat()">Send</button><pre id="chatout"></pre>
+<script>
+async function run(path){const target=document.getElementById('target').value;const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target,scope:'scope.yaml'})});document.getElementById('results').textContent=await r.text();}
+async function loadTools(){const r=await fetch('/api/tools');document.getElementById('tools').textContent=JSON.stringify(await r.json(),null,2)}
+async function chat(){const target=document.getElementById('target').value;const message=document.getElementById('chat').value;const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target,message,scope:'scope.yaml'})});document.getElementById('chatout').textContent=await r.text();}
+</script></body></html>

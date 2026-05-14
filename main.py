@@ -36,6 +36,7 @@ def main():
     parser = argparse.ArgumentParser(description='Legion CLI')
     sub = parser.add_subparsers(dest='command')
     sub.add_parser('tools')
+    dashboard = sub.add_parser('dashboard'); dashboard.add_argument('--host', default='127.0.0.1'); dashboard.add_argument('--port', type=int, default=8080)
     recon = sub.add_parser('recon'); recon.add_argument('target'); recon.add_argument('--scope', default='scope.yaml')
     recon_pipeline = sub.add_parser('recon-pipeline'); recon_pipeline.add_argument('target'); recon_pipeline.add_argument('--scope', default='scope.yaml')
     classify = sub.add_parser('classify-endpoints'); classify.add_argument('target'); classify.add_argument('--input', required=True); classify.add_argument('--scope', default='scope.yaml')
@@ -62,6 +63,9 @@ def main():
 
     try:
         if args.command == 'tools': list_tools()
+        elif args.command == 'dashboard':
+            import uvicorn
+            uvicorn.run('web.app:app', host=args.host, port=args.port, reload=False)
         elif args.command == 'recon': validate_scope(args.target, args.scope); q=JobQueue(max_workers=1); f=q.submit(run_recon, args.target); f.result(); q.shutdown()
         elif args.command == 'recon-pipeline': validate_scope(args.target, args.scope); print(run_recon_pipeline(args.target))
         elif args.command == 'classify-endpoints': validate_scope(args.target, args.scope); print(f"[+] Classified {len(classify_and_store_endpoints(args.target, _read_lines(args.input)))} endpoints")
