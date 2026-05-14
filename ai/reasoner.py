@@ -18,8 +18,23 @@ def _maybe_client() -> OpenAI | None:
 
 
 def _safe_json_parse(raw: str, default: Any):
+    text = (raw or '').strip()
+    if not text:
+        return default
+
+    # Common model behavior: wrap JSON with ```json ... ``` fences.
+    if '```' in text:
+        fenced = text.split('```')
+        for block in fenced:
+            block = block.strip()
+            if block.startswith('json'):
+                block = block[4:].strip()
+            if block.startswith('{') or block.startswith('['):
+                text = block
+                break
+
     try:
-        return json.loads(raw)
+        return json.loads(text)
     except Exception:
         return default
 
@@ -28,8 +43,6 @@ def classify_endpoints_with_ai(endpoints: list[str]) -> list[dict]:
     if not endpoints:
         return []
 
-    require_approval('Send discovered endpoints to OpenAI for AI classification', 'approval')
-
     client = _maybe_client()
     if client is None:
         return [
@@ -37,9 +50,11 @@ def classify_endpoints_with_ai(endpoints: list[str]) -> list[dict]:
             for ep in endpoints
         ]
 
+    require_approval('Send discovered endpoints to OpenAI for AI classification', 'approval')
+
     prompt = (
         'Classify each endpoint for bug bounty attack-surface triage. '
-        'Return JSON array of {endpoint, category, confidence, reason}. '
+        'Return strict JSON array of objects: {endpoint, category, confidence, reason}. '
         'Categories: authentication, authorization, payment, admin, graphql, pii, upload, general-api.\n\n'
         + '\n'.join(endpoints)
     )
@@ -48,16 +63,11 @@ def classify_endpoints_with_ai(endpoints: list[str]) -> list[dict]:
         model='gpt-4.1-mini',
         input=prompt,
     )
-    text = response.output_text.strip()
-    data = _safe_json_parse(text, [])
-    if isinstance(data, list):
-        return data
-    return []
+    data = _safe_json_parse(response.output_text, [])
+    return data if isinstance(data, list) else []
 
 
 def auth_diff_with_ai(endpoint: str, unauth_response: str, auth_response: str) -> dict:
-    require_approval(f'Send auth diff sample for {endpoint} to OpenAI', 'approval')
-
     client = _maybe_client()
     if client is None:
         return {
@@ -67,8 +77,10 @@ def auth_diff_with_ai(endpoint: str, unauth_response: str, auth_response: str) -
             'signals': [],
         }
 
+    require_approval(f'Send auth diff sample for {endpoint} to OpenAI', 'approval')
+
     prompt = f'''Compare unauthenticated vs authenticated responses for authz weaknesses.
-Return JSON object with keys: endpoint, risk, summary, signals.
+Return strict JSON object with keys: endpoint, risk, summary, signals.
 
 Endpoint: {endpoint}
 
@@ -80,7 +92,7 @@ AUTH RESPONSE:
 '''
 
     response = client.responses.create(model='gpt-4.1-mini', input=prompt)
-    return _safe_json_parse(response.output_text.strip(), {
+    return _safe_json_parse(response.output_text, {
         'endpoint': endpoint,
         'risk': 'unknown',
         'summary': 'Could not parse AI output.',
@@ -89,8 +101,6 @@ AUTH RESPONSE:
 
 
 def draft_report_with_ai(finding: str, target: str, evidence: str) -> str:
-    require_approval(f'Send finding evidence to OpenAI to draft report for {finding}', 'approval')
-
     client = _maybe_client()
     if client is None:
         return f'''# {finding}
@@ -104,6 +114,8 @@ Manual drafting required because OPENAI_API_KEY is not configured.
 ## Evidence
 {evidence}
 '''
+
+    require_approval(f'Send finding evidence to OpenAI to draft report for {finding}', 'approval')
 
     prompt = f'''Draft a concise bug bounty report in Markdown.
 Include sections: Title, Summary, Steps to Reproduce, Impact, Evidence, Remediation.

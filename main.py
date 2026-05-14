@@ -7,6 +7,13 @@ from core.report import create_report
 from ai.reasoner import plan_next_step
 from modules.recon import run_recon
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
+from browser.playwright_capture import BrowserCapture
+from modules.traffic_import import import_burp_xml, import_caido_json
+
+
+def _read_text(path: str) -> str:
+    p = Path(path)
+    return p.read_text() if p.exists() else ""
 
 
 def _read_lines(path: str) -> list[str]:
@@ -37,6 +44,15 @@ def main():
     authdiff.add_argument('--unauth-file', required=True)
     authdiff.add_argument('--auth-file', required=True)
     authdiff.add_argument('--scope', default='scope.yaml')
+
+    capture = sub.add_parser('capture-traffic')
+    capture.add_argument('url')
+    capture.add_argument('--wait-ms', type=int, default=5000)
+
+    imp = sub.add_parser('import-traffic')
+    imp.add_argument('source', choices=['burp', 'caido'])
+    imp.add_argument('file')
+    imp.add_argument('--target')
 
     js = sub.add_parser('js')
     js.add_argument('target')
@@ -72,10 +88,21 @@ def main():
 
     elif args.command == 'auth-diff':
         validate_scope(args.target, args.scope)
-        unauth = Path(args.unauth_file).read_text() if Path(args.unauth_file).exists() else ''
-        auth = Path(args.auth_file).read_text() if Path(args.auth_file).exists() else ''
+        unauth = _read_text(args.unauth_file)
+        auth = _read_text(args.auth_file)
         diff = run_auth_diff(args.target, args.endpoint, unauth, auth)
         print(diff)
+
+    elif args.command == 'capture-traffic':
+        result = BrowserCapture().capture(args.url, wait_ms=args.wait_ms)
+        print(result)
+
+    elif args.command == 'import-traffic':
+        if args.source == 'burp':
+            result = import_burp_xml(args.file, target=args.target)
+        else:
+            result = import_caido_json(args.file, target=args.target)
+        print(result)
 
     elif args.command == 'js':
         validate_scope(args.target, args.scope)
