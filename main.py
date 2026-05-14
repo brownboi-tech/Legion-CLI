@@ -6,21 +6,6 @@ from core.scope import validate_scope
 from core.report import create_report
 from ai.reasoner import plan_next_step
 from modules.recon import run_recon
-from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
-
-
-def _read_text(path: str) -> str:
-    p = Path(path)
-    if not p.exists():
-        return ''
-    return p.read_text()
-
-
-def _read_lines(path: str) -> list[str]:
-    p = Path(path)
-    if not p.exists():
-        return []
-    return [line.strip() for line in p.read_text().splitlines() if line.strip()]
 
 
 def main():
@@ -70,19 +55,6 @@ def main():
     elif args.command == 'recon':
         validate_scope(args.target, args.scope)
         run_recon(args.target)
-
-    elif args.command == 'classify-endpoints':
-        validate_scope(args.target, args.scope)
-        endpoints = _read_lines(args.input)
-        rows = classify_and_store_endpoints(args.target, endpoints)
-        print(f'[+] Classified {len(rows)} endpoints')
-
-    elif args.command == 'auth-diff':
-        validate_scope(args.target, args.scope)
-        unauth = _read_text(args.unauth_file)
-        auth = _read_text(args.auth_file)
-        diff = run_auth_diff(args.target, args.endpoint, unauth, auth)
-        print(diff)
 
     elif args.command == 'js':
         validate_scope(args.target, args.scope)
