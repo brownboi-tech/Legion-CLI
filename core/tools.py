@@ -1,6 +1,6 @@
 TOOLS = {
     'safe': [
-        'subfinder', 'httpx', 'katana', 'gau', 'waybackurls', 'subjs'
+        'subfinder', 'httpx', 'katana', 'gau', 'waybackurls', 'subjs', 'playwright', 'burp-import', 'caido-import'
     ],
     'approval': [
         'ffuf', 'arjun', 'dalfox', 'nmap', 'nuclei'
