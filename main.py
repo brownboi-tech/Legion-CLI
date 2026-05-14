@@ -15,6 +15,7 @@ from modules.idor import generate_idor_plan, run_idor_test
 from modules.js_routes import extract_js_routes
 from modules.nuclei_safe import run_nuclei_safe
 from modules.graphql import graphql_check
+from modules.js_analyzer import analyze_js_url, analyze_js_file
 from core.job_queue import JobQueue
 
 
@@ -105,6 +106,18 @@ def main():
     imp.add_argument('source', choices=['burp', 'caido'])
     imp.add_argument('file')
     imp.add_argument('--target')
+
+    js_url = sub.add_parser('js-url')
+    js_url.add_argument('target')
+    js_url.add_argument('--url', required=True)
+    js_url.add_argument('--ai-summary', action='store_true')
+    js_url.add_argument('--scope', default='scope.yaml')
+
+    js_file = sub.add_parser('js-file')
+    js_file.add_argument('target')
+    js_file.add_argument('--file', required=True)
+    js_file.add_argument('--ai-summary', action='store_true')
+    js_file.add_argument('--scope', default='scope.yaml')
 
     js = sub.add_parser('js')
     js.add_argument('target')
@@ -197,6 +210,14 @@ def main():
         else:
             result = import_caido_json(args.file, target=args.target)
         print(result)
+
+    elif args.command == 'js-url':
+        validate_scope(args.target, args.scope)
+        print(analyze_js_url(args.target, args.url, ai_summary=args.ai_summary))
+
+    elif args.command == 'js-file':
+        validate_scope(args.target, args.scope)
+        print(analyze_js_file(args.target, args.file, ai_summary=args.ai_summary))
 
     elif args.command == 'js':
         validate_scope(args.target, args.scope)
