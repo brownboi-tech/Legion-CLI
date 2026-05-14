@@ -155,3 +155,33 @@ AI features require `OPENAI_API_KEY` and approval before outbound data sharing.
 ## License
 
 MIT
+
+---
+
+## First Run Test (Parrot OS)
+
+Run these exact commands in order:
+
+```bash
+cd Legion-CLI
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+playwright install
+
+# compile check
+python3 -m py_compile main.py core/*.py ai/*.py modules/*.py storage/*.py traffic/*.py browser/*.py
+
+# quick CLI checks
+python3 main.py --help
+python3 main.py tools
+
+# optional smoke tests
+python3 -m pytest -q tests
+```
+
+Expected:
+- `py_compile` exits with code `0`
+- `main.py --help` prints command list
+- `main.py tools` prints installed/missing tools
+- pytest smoke tests pass (or report missing pytest package)
