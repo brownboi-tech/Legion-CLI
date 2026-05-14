@@ -9,6 +9,7 @@ from modules.recon import run_recon
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
 from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
+from modules.evidence_manager import init_evidence_tree
 
 
 def _read_text(path: str) -> str:
@@ -44,6 +45,9 @@ def main():
     authdiff.add_argument('--unauth-file', required=True)
     authdiff.add_argument('--auth-file', required=True)
     authdiff.add_argument('--scope', default='scope.yaml')
+
+    evidence = sub.add_parser('evidence-init')
+    evidence.add_argument('target')
 
     capture = sub.add_parser('capture-traffic')
     capture.add_argument('url')
@@ -92,6 +96,10 @@ def main():
         auth = _read_text(args.auth_file)
         diff = run_auth_diff(args.target, args.endpoint, unauth, auth)
         print(diff)
+
+    elif args.command == 'evidence-init':
+        root = init_evidence_tree(args.target)
+        print(f'[+] Evidence tree ready: {root}')
 
     elif args.command == 'capture-traffic':
         result = BrowserCapture().capture(args.url, wait_ms=args.wait_ms)

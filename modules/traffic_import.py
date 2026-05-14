@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from modules.evidence_manager import evidence_path, init_evidence_tree
 from storage.database import init_db, insert_endpoint, insert_recon_artifact
 
 
@@ -75,6 +76,10 @@ def import_caido_json(file_path: str, target: str | None = None) -> dict:
 
 
 def _persist_import_results(target: str, source: str, file_path: str, urls: list[str]):
+    init_evidence_tree(target)
+    replay_file = evidence_path(target, 'replay', f'{source}_import_urls.json')
+    replay_file.write_text(json.dumps(urls, indent=2))
+
     init_db()
     for url in urls:
         insert_endpoint(target=target, endpoint=url, source=source)
@@ -82,6 +87,6 @@ def _persist_import_results(target: str, source: str, file_path: str, urls: list
         target=target,
         phase='traffic-import',
         tool=source,
-        file_path=file_path,
+        file_path=str(replay_file),
         line_count=len(urls),
     )
