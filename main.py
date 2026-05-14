@@ -89,7 +89,7 @@ def main():
         print(plan_next_step(args.target))
 
     elif args.command == 'report':
-        evidence = Path(args.evidence_file).read_text() if args.evidence_file and Path(args.evidence_file).exists() else ''
+        evidence = _read_text(args.evidence_file) if args.evidence_file else ''
         create_report(args.finding, args.target, ai_draft=args.ai_draft, evidence=evidence)
 
     else:
