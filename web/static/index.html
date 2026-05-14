@@ -27,6 +27,8 @@
     <input id="replayFile" placeholder="Replay file" />
     <input id="finding" placeholder="Finding name" />
     <input id="chatMsg" placeholder="Chat message" />
+    <input id="programName" placeholder="Program name" />
+    <textarea id="scopeText" placeholder="Paste program scope/rules text" style="width:100%;height:120px;background:#0d1420;color:#d2f7ff;border:1px solid #2b3d5a;border-radius:6px"></textarea>
   </div>
   <div class="card">
     <h3>Actions</h3>
@@ -36,6 +38,7 @@
     <button onclick="runNuclei()">Run Nuclei Safe</button><button onclick="runGraphql()">Analyze GraphQL</button>
     <button onclick="runOauth()">Check OAuth</button><button onclick="runIdor()">Generate IDOR Plan</button>
     <button onclick="runReport()">Generate Report From Evidence</button><button onclick="runChat()">Send Chat Command To Legion Agent</button>
+    <button onclick="createScope()">Create Scope From Chat</button>
     <div id="status"></div>
   </div>
 </div>
@@ -66,5 +69,6 @@ function runOauth(){call('/api/run/oauth-check','POST',{target:state.target(),sc
 function runIdor(){call('/api/run/idor-plan','POST',{target:state.target(),scope:state.scope(),replay_file:$('replayFile').value})}
 function runReport(){call('/api/report-auto','POST',{target:state.target(),finding:$('finding').value})}
 function runChat(){call('/api/chat','POST',{target:state.target(),scope:state.scope(),message:$('chatMsg').value})}
+function createScope(){call('/api/scope/from-chat','POST',{program:$('programName').value,message:$('scopeText').value})}
 </script>
 </body></html>

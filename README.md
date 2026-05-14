@@ -200,3 +200,20 @@ Open:
 ```bash
 open http://127.0.0.1:8080
 ```
+
+## Creating Scope From Program Text
+
+### Dashboard flow
+1. Open Dashboard (`python3 main.py dashboard --host 127.0.0.1 --port 8080`).
+2. Fill **Program name**.
+3. Paste scope/rules into the large scope text box.
+4. Click **Create Scope From Chat**.
+5. Review JSON preview in results panel.
+
+### CLI flow
+```bash
+python3 main.py scope-from-text program-name --file scope_text.txt
+```
+
+This creates:
+- `scopes/program-name.yaml`

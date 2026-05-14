@@ -19,6 +19,7 @@ from modules.graphql import graphql_check
 from modules.js_analyzer import analyze_js_url, analyze_js_file
 from modules.oauth import oauth_check
 from core.job_queue import JobQueue
+from modules.scope_builder import create_scope_from_file
 
 
 def _read_text(path: str) -> str:
@@ -59,6 +60,7 @@ def main():
     api = sub.add_parser('api'); api.add_argument('target'); api.add_argument('--scope', default='scope.yaml')
     ai_plan = sub.add_parser('ai-plan'); ai_plan.add_argument('target')
     report = sub.add_parser('report'); report.add_argument('finding'); report.add_argument('--target', required=True); report.add_argument('--ai-draft', action='store_true'); report.add_argument('--evidence-file')
+    sft = sub.add_parser('scope-from-text'); sft.add_argument('program'); sft.add_argument('--file', required=True)
     args = parser.parse_args()
 
     try:
@@ -88,6 +90,7 @@ def main():
         elif args.command == 'api': validate_scope(args.target, args.scope); print(f'[+] API analysis workflow prepared for {args.target}')
         elif args.command == 'ai-plan': print(plan_next_step(args.target))
         elif args.command == 'report': create_report(args.finding, args.target, ai_draft=args.ai_draft, evidence=_read_text(args.evidence_file) if args.evidence_file else '')
+        elif args.command == 'scope-from-text': print(create_scope_from_file(args.program, args.file))
         else: parser.print_help()
     except (FileNotFoundError, ValueError, Exception) as exc:
         print(f'[!] Error: {exc}')

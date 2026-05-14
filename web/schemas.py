@@ -7,3 +7,7 @@ class OAuthRequest(TargetRequest): url: str
 class IDORPlanRequest(TargetRequest): replay_file: str
 class ReportRequest(BaseModel): target: str; finding: str
 class ChatRequest(BaseModel): target: str; message: str; scope: str = 'scope.yaml'
+
+class ScopeFromChatRequest(BaseModel):
+    program: str
+    message: str

@@ -11,6 +11,7 @@ from modules.nuclei_safe import run_nuclei_safe
 from modules.oauth import oauth_check
 from modules.recon_pipeline import run_recon_pipeline
 from core.report import create_report_from_evidence
+from modules.scope_builder import create_scope_from_text
 from web.agent import parse_command, chat_with_agent
 from web.schemas import *
 
@@ -59,3 +60,7 @@ def chat(req: ChatRequest):
     _v(req.target, req.scope)
     parsed = parse_command(req.message)
     return {'agent': parsed, 'agent_reply': chat_with_agent(req.message)}
+
+@app.post('/api/scope/from-chat')
+def scope_from_chat(req: ScopeFromChatRequest):
+    return create_scope_from_text(req.program, req.message, save=True)
