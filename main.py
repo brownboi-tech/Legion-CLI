@@ -11,6 +11,7 @@ from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
 from modules.evidence_manager import init_evidence_tree
 from modules.idor_bola import analyze_idor_from_replay
+from modules.idor import run_safe_idor_replay
 from core.job_queue import JobQueue
 
 
@@ -54,6 +55,10 @@ def main():
     idor = sub.add_parser('idor-bola')
     idor.add_argument('target')
     idor.add_argument('--replay-file', required=True)
+
+    idor_safe = sub.add_parser('idor-safe-replay')
+    idor_safe.add_argument('target')
+    idor_safe.add_argument('--session-file', required=True)
 
     capture = sub.add_parser('capture-traffic')
     capture.add_argument('url')
@@ -112,6 +117,10 @@ def main():
 
     elif args.command == 'idor-bola':
         result = analyze_idor_from_replay(args.target, args.replay_file)
+        print(result)
+
+    elif args.command == 'idor-safe-replay':
+        result = run_safe_idor_replay(args.target, args.session_file)
         print(result)
 
     elif args.command == 'capture-traffic':
