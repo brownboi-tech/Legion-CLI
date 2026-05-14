@@ -10,6 +10,8 @@ from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
 from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
 from modules.evidence_manager import init_evidence_tree
+from modules.idor_bola import analyze_idor_from_replay
+from core.job_queue import JobQueue
 
 
 def _read_text(path: str) -> str:
@@ -49,6 +51,10 @@ def main():
     evidence = sub.add_parser('evidence-init')
     evidence.add_argument('target')
 
+    idor = sub.add_parser('idor-bola')
+    idor.add_argument('target')
+    idor.add_argument('--replay-file', required=True)
+
     capture = sub.add_parser('capture-traffic')
     capture.add_argument('url')
     capture.add_argument('--wait-ms', type=int, default=5000)
@@ -82,7 +88,10 @@ def main():
 
     elif args.command == 'recon':
         validate_scope(args.target, args.scope)
-        run_recon(args.target)
+        queue = JobQueue(max_workers=1)
+        future = queue.submit(run_recon, args.target)
+        future.result()
+        queue.shutdown()
 
     elif args.command == 'classify-endpoints':
         validate_scope(args.target, args.scope)
@@ -100,6 +109,10 @@ def main():
     elif args.command == 'evidence-init':
         root = init_evidence_tree(args.target)
         print(f'[+] Evidence tree ready: {root}')
+
+    elif args.command == 'idor-bola':
+        result = analyze_idor_from_replay(args.target, args.replay_file)
+        print(result)
 
     elif args.command == 'capture-traffic':
         result = BrowserCapture().capture(args.url, wait_ms=args.wait_ms)
