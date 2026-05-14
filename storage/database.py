@@ -4,7 +4,7 @@ from pathlib import Path
 DB_PATH = Path('data/legion.db')
 
 
-def connect():
+def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     return sqlite3.connect(DB_PATH)
 
