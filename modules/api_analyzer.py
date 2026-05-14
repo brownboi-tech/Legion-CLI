@@ -1,10 +1,11 @@
 import json
 
 from ai.reasoner import classify_endpoints_with_ai, auth_diff_with_ai
-from storage.database import insert_auth_diff, insert_endpoint_classification
+from storage.database import init_db, insert_auth_diff, insert_endpoint_classification
 
 
 def classify_and_store_endpoints(target: str, endpoints: list[str]) -> list[dict]:
+    init_db()
     rows = classify_endpoints_with_ai(endpoints)
     for row in rows:
         insert_endpoint_classification(
@@ -18,6 +19,7 @@ def classify_and_store_endpoints(target: str, endpoints: list[str]) -> list[dict
 
 
 def run_auth_diff(target: str, endpoint: str, unauth_response: str, auth_response: str) -> dict:
+    init_db()
     diff = auth_diff_with_ai(endpoint, unauth_response, auth_response)
     insert_auth_diff(
         target=target,
