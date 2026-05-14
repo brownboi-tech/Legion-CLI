@@ -3,6 +3,7 @@ from core.tools import list_tools
 from core.scope import validate_scope
 from core.report import create_report
 from ai.reasoner import plan_next_step
+from modules.recon import run_recon
 
 
 def main():
@@ -37,7 +38,7 @@ def main():
 
     elif args.command == 'recon':
         validate_scope(args.target, args.scope)
-        print(f'[+] Recon workflow prepared for {args.target}')
+        run_recon(args.target)
 
     elif args.command == 'js':
         validate_scope(args.target, args.scope)
