@@ -1,36 +1,43 @@
 # Legion CLI
 
-**Legion CLI** is a human-in-the-loop bug bounty automation system for Parrot OS.
+**Legion CLI** is a human-in-the-loop bug bounty automation CLI for authorized security testing.
 
-It helps authorized security researchers organize scope, run safe reconnaissance, discover endpoints, inspect JavaScript, classify API attack surface, use an OpenAI-powered reasoning layer, store evidence, and draft clean bug bounty reports.
+It helps you:
+- manage scope and safety gates,
+- run recon pipelines,
+- capture/import traffic,
+- analyze JS/API/OAuth/GraphQL surfaces,
+- run safe IDOR workflows,
+- store artifacts/evidence in SQLite + structured folders,
+- draft reports (optionally with OpenAI).
 
-> Legion suggests. You approve. Nothing high-risk should run blindly.
+> Legion suggests. You approve. High-risk actions should never run blindly.
 
-## Repository description
+---
 
-Human-in-the-loop bug bounty automation CLI for Parrot OS with scope guard, 50-tool registry, AI-assisted triage, evidence storage, and report generation.
-
-## Core architecture
+## Core Architecture
 
 ```text
 Scope Guard
-  -> Tool Registry
-  -> Recon / Crawl / JS / API Modules
-  -> AI Brain
+  -> Tool Registry (50 tools + installed status)
+  -> Recon / Traffic / JS / OAuth / GraphQL / IDOR Modules
+  -> AI Reasoning Layer (optional)
   -> Human Approval Gate
-  -> Evidence Store
-  -> Report Generator
+  -> Evidence + SQLite Storage
+  -> Report Builder
 ```
 
-## Safety model
+---
 
-Legion is designed for authorized testing only.
+## Safety Model
 
 | Level | Meaning |
 |---|---|
-| `safe` | Can run automatically when target is in scope |
-| `approval` | Command is shown and requires user approval |
-| `manual` | Legion prints a checklist; user performs careful manual testing |
+| `safe` | Runs automatically for in-scope targets |
+| `approval` | Prints command/action and requires user approval |
+| `manual` | Legion provides guidance; user performs manually |
+
+---
 
 ## Install
 
@@ -43,37 +50,138 @@ pip install -r requirements.txt
 playwright install
 ```
 
-## Quick Start
+---
+
+## Evidence + Storage
+
+### Evidence Tree
+
+```text
+evidence/
+  <target>/
+    requests/
+    responses/
+    screenshots/
+    ai-analysis/
+    replay/
+```
+
+### SQLite
+
+DB path: `data/legion.db`
+
+Tables include:
+- `findings`
+- `endpoints`
+- `recon_artifacts`
+- `endpoint_classifications`
+- `auth_diffs`
+
+---
+
+## Key Commands
+
+### Tool Registry
 
 ```bash
 python3 main.py tools
-python3 main.py recon example.com --scope scope.yaml
-python3 main.py js https://example.com --scope scope.yaml
-python3 main.py report finding-name --target example.com
 ```
 
-## Core Modules
+Shows all 50 tools with category, risk level, and installed/missing status.
 
-- Recon engine
-- JS intelligence
-- API endpoint classification
-- AI reasoning layer
-- Human approval system
-- Evidence storage
-- Markdown report generator
-- 50-tool registry
+### Recon
 
-## Supported Tool Groups
+```bash
+python3 main.py recon example.com --scope scope.yaml
+```
 
-- Recon
-- Crawling
-- JavaScript analysis
-- API testing
-- Traffic interception
-- Mobile reversing
-- Cloud/secrets scanning
-- Report generation
+Runs chained recon using available tools (`subfinder`, `httpx`, `katana`, `gau`, `waybackurls`), dedupes endpoints, and stores outputs/artifacts.
 
-## Disclaimer
+### Traffic Capture / Import
 
-Use only on assets you own or are explicitly authorized to test.
+```bash
+python3 main.py capture-traffic https://example.com
+python3 main.py import-traffic burp burp_export.xml --target example.com
+python3 main.py import-traffic caido caido_export.json --target example.com
+```
+
+### JavaScript Analysis
+
+```bash
+python3 main.py js-url example.com --url https://example.com/app.js --scope scope.yaml
+python3 main.py js-file example.com --file app.js --scope scope.yaml
+python3 main.py js-file example.com --file app.js --ai-summary --scope scope.yaml
+```
+
+Extracts routes/endpoints/flags/source maps/cloud URLs/token candidates (masked) and writes `evidence/<target>/ai-analysis/js_findings.json`.
+
+### OAuth / GraphQL
+
+```bash
+python3 main.py oauth-check example.com --url "https://idp/authorize?..." --scope scope.yaml
+python3 main.py graphql-analyze example.com --endpoint https://example.com/graphql --scope scope.yaml
+```
+
+### IDOR Workflows
+
+```bash
+python3 main.py idor-plan example.com --replay-file replay.json --scope scope.yaml
+python3 main.py idor-test example.com --plan evidence/example.com/ai-analysis/idor_plan.json --user-a-token TOKEN_A --user-b-token TOKEN_B --scope scope.yaml
+```
+
+- Generates plan first.
+- Replays only safe defaults (`GET`).
+- Requires approval before replay actions.
+
+### AI-Assisted Analysis + Reports
+
+```bash
+python3 main.py classify-endpoints example.com --input urls.txt --scope scope.yaml
+python3 main.py auth-diff example.com --endpoint https://example.com/api/user --unauth-file unauth.txt --auth-file auth.txt --scope scope.yaml
+python3 main.py report finding-name --target example.com --ai-draft --evidence-file evidence.txt
+python3 main.py report-auto finding-name --target example.com
+```
+
+AI features require `OPENAI_API_KEY` and approval before outbound data sharing.
+
+---
+
+## Notes
+
+- Use only with explicit authorization.
+- Scope validation is enforced on high-value analysis commands.
+- Secrets found in JS analysis are masked before output.
+
+## License
+
+MIT
+
+---
+
+## First Run Test (Parrot OS)
+
+Run these exact commands in order:
+
+```bash
+cd Legion-CLI
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+playwright install
+
+# compile check
+python3 -m py_compile main.py core/*.py ai/*.py modules/*.py storage/*.py traffic/*.py browser/*.py
+
+# quick CLI checks
+python3 main.py --help
+python3 main.py tools
+
+# optional smoke tests
+python3 -m pytest -q tests
+```
+
+Expected:
+- `py_compile` exits with code `0`
+- `main.py --help` prints command list
+- `main.py tools` prints installed/missing tools
+- pytest smoke tests pass (or report missing pytest package)
