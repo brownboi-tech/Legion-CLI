@@ -6,6 +6,7 @@ from core.scope import validate_scope
 from core.report import create_report, create_report_from_evidence
 from ai.reasoner import plan_next_step
 from modules.recon import run_recon
+from modules.recon_pipeline import run_recon_pipeline
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
 from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
@@ -36,6 +37,7 @@ def main():
     sub = parser.add_subparsers(dest='command')
     sub.add_parser('tools')
     recon = sub.add_parser('recon'); recon.add_argument('target'); recon.add_argument('--scope', default='scope.yaml')
+    recon_pipeline = sub.add_parser('recon-pipeline'); recon_pipeline.add_argument('target'); recon_pipeline.add_argument('--scope', default='scope.yaml')
     classify = sub.add_parser('classify-endpoints'); classify.add_argument('target'); classify.add_argument('--input', required=True); classify.add_argument('--scope', default='scope.yaml')
     authdiff = sub.add_parser('auth-diff'); authdiff.add_argument('target'); authdiff.add_argument('--endpoint', required=True); authdiff.add_argument('--unauth-file', required=True); authdiff.add_argument('--auth-file', required=True); authdiff.add_argument('--scope', default='scope.yaml')
     evidence = sub.add_parser('evidence-init'); evidence.add_argument('target')
@@ -61,6 +63,7 @@ def main():
     try:
         if args.command == 'tools': list_tools()
         elif args.command == 'recon': validate_scope(args.target, args.scope); q=JobQueue(max_workers=1); f=q.submit(run_recon, args.target); f.result(); q.shutdown()
+        elif args.command == 'recon-pipeline': validate_scope(args.target, args.scope); print(run_recon_pipeline(args.target))
         elif args.command == 'classify-endpoints': validate_scope(args.target, args.scope); print(f"[+] Classified {len(classify_and_store_endpoints(args.target, _read_lines(args.input)))} endpoints")
         elif args.command == 'auth-diff': validate_scope(args.target, args.scope); print(run_auth_diff(args.target, args.endpoint, _read_text(args.unauth_file), _read_text(args.auth_file)))
         elif args.command == 'evidence-init': print(f'[+] Evidence tree ready: {init_evidence_tree(args.target)}')
