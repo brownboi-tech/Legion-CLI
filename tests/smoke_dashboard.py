@@ -1,8 +1,6 @@
 import pytest
-
 fastapi = pytest.importorskip('fastapi')
 from fastapi.testclient import TestClient
-
 from web.agent import parse_command
 from web.app import app
 
@@ -18,9 +16,13 @@ def test_health_route():
     assert r.json().get('status') == 'ok'
 
 
-def test_agent_parse():
+def test_agent_parse_shape():
     out = parse_command('run recon on example.com')
-    assert out.get('action') == 'recon-pipeline'
+    assert out.get('parsed_action') == 'recon-pipeline'
+    assert 'safety_level' in out
+    assert 'suggested_api_route' in out
+    assert 'required_parameters' in out
+    assert 'explanation' in out
 
 
 def test_dashboard_command_exists():
