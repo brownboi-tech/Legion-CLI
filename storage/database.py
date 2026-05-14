@@ -106,7 +106,6 @@ def insert_recon_artifact(target: str, phase: str, tool: str, file_path: str, li
             signals TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS recon_artifacts (
