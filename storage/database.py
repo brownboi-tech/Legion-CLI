@@ -117,7 +117,6 @@ def insert_recon_artifact(target: str, phase: str, tool: str, file_path: str, li
             line_count INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
 
     conn.commit()
     conn.close()
