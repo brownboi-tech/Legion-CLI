@@ -16,6 +16,7 @@ from modules.js_routes import extract_js_routes
 from modules.nuclei_safe import run_nuclei_safe
 from modules.graphql import graphql_check
 from modules.js_analyzer import analyze_js_url, analyze_js_file
+from modules.oauth import oauth_check
 from core.job_queue import JobQueue
 
 
@@ -93,6 +94,11 @@ def main():
     gql.add_argument('target')
     gql.add_argument('--endpoint', required=True)
     gql.add_argument('--scope', default='scope.yaml')
+
+    oauth = sub.add_parser('oauth-check')
+    oauth.add_argument('target')
+    oauth.add_argument('--url', required=True)
+    oauth.add_argument('--scope', default='scope.yaml')
 
     report_auto = sub.add_parser('report-auto')
     report_auto.add_argument('finding')
@@ -196,6 +202,10 @@ def main():
     elif args.command == 'graphql-analyze':
         validate_scope(args.target, args.scope)
         print(graphql_check(args.endpoint, args.target))
+
+    elif args.command == 'oauth-check':
+        validate_scope(args.target, args.scope)
+        print(oauth_check(args.target, args.url))
 
     elif args.command == 'report-auto':
         print(create_report_from_evidence(args.finding, args.target))
