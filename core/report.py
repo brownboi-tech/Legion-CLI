@@ -1,13 +1,18 @@
 from pathlib import Path
 
+from ai.reasoner import draft_report_with_ai
 
-def create_report(finding, target):
+
+def create_report(finding, target, ai_draft: bool = False, evidence: str = ''):
     report_dir = Path('reports') / target
     report_dir.mkdir(parents=True, exist_ok=True)
 
     report_file = report_dir / f'{finding}.md'
 
-    content = f'''# {finding}
+    if ai_draft:
+        content = draft_report_with_ai(finding=finding, target=target, evidence=evidence)
+    else:
+        content = f'''# {finding}
 
 ## Target
 {target}
