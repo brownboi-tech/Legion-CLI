@@ -9,13 +9,6 @@ from modules.recon import run_recon
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
 
 
-def _read_text(path: str) -> str:
-    p = Path(path)
-    if not p.exists():
-        return ''
-    return p.read_text()
-
-
 def _read_lines(path: str) -> list[str]:
     p = Path(path)
     if not p.exists():
@@ -79,8 +72,8 @@ def main():
 
     elif args.command == 'auth-diff':
         validate_scope(args.target, args.scope)
-        unauth = _read_text(args.unauth_file)
-        auth = _read_text(args.auth_file)
+        unauth = Path(args.unauth_file).read_text() if Path(args.unauth_file).exists() else ''
+        auth = Path(args.auth_file).read_text() if Path(args.auth_file).exists() else ''
         diff = run_auth_diff(args.target, args.endpoint, unauth, auth)
         print(diff)
 
