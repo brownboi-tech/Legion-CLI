@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Legion Dashboard v1</title>
+  <style>
+    body{background:#0b0f14;color:#d2f7ff;font-family:ui-monospace,Consolas;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .card{background:#111826;border:1px solid #24344d;border-radius:10px;padding:12px}
+    input{width:100%;margin:4px 0;padding:8px;background:#0d1420;color:#d2f7ff;border:1px solid #2b3d5a;border-radius:6px}
+    button{margin:4px;padding:8px 10px;background:#173156;color:#c7f4ff;border:1px solid #2f4d75;border-radius:6px;cursor:pointer}
+    pre{background:#06090f;padding:10px;border-radius:8px;max-height:340px;overflow:auto}
+    .loading{color:#ffd166}.error{color:#ff6b6b}
+  </style>
+</head>
+<body>
+<h1>⚡ Legion Dashboard v1</h1>
+<div class="grid">
+  <div class="card">
+    <h3>Inputs</h3>
+    <input id="target" placeholder="target" />
+    <input id="scope" value="scope.yaml" placeholder="scope file" />
+    <input id="jsUrl" placeholder="JS URL" />
+    <input id="urlsFile" placeholder="URLs file" />
+    <input id="graphqlEndpoint" placeholder="GraphQL endpoint" />
+    <input id="oauthUrl" placeholder="OAuth URL" />
+    <input id="replayFile" placeholder="Replay file" />
+    <input id="finding" placeholder="Finding name" />
+    <input id="chatMsg" placeholder="Chat message" />
+  </div>
+  <div class="card">
+    <h3>Actions</h3>
+    <button onclick="loadTools()">Load Tools</button><button onclick="loadTargets()">Load Targets</button>
+    <button onclick="loadEvidence()">Load Evidence</button><button onclick="loadFindings()">Load Findings</button>
+    <button onclick="runRecon()">Run Recon Pipeline</button><button onclick="runJsUrl()">Analyze JS URL</button>
+    <button onclick="runNuclei()">Run Nuclei Safe</button><button onclick="runGraphql()">Analyze GraphQL</button>
+    <button onclick="runOauth()">Check OAuth</button><button onclick="runIdor()">Generate IDOR Plan</button>
+    <button onclick="runReport()">Generate Report From Evidence</button><button onclick="runChat()">Send Chat Command To Legion Agent</button>
+    <div id="status"></div>
+  </div>
+</div>
+<div class="grid">
+  <div class="card"><h3>Results (JSON)</h3><pre id="results">{}</pre></div>
+  <div class="card"><h3>Latest Logs/Output</h3><pre id="logs">Ready.</pre></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const state={target:()=>$('target').value,scope:()=>$('scope').value};
+function setLoading(v){$('status').innerHTML=v?'<span class="loading">Loading...</span>':''}
+function log(msg,err=false){$('logs').textContent=msg;$('logs').className=err?'error':''}
+async function call(path,method='GET',body=null){
+  try{setLoading(true);log('Calling '+path);const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):null});
+    const txt=await r.text();let data;try{data=JSON.parse(txt)}catch{data={raw:txt}};$('results').textContent=JSON.stringify(data,null,2);
+    if(!r.ok){log('Error: '+txt,true)}else{log('Success: '+path)}
+  }catch(e){log('Request failed: '+e,true)}finally{setLoading(false)}
+}
+function loadTools(){call('/api/tools')}
+function loadTargets(){call('/api/targets')}
+function loadEvidence(){call('/api/evidence/'+state.target())}
+function loadFindings(){call('/api/findings/'+state.target())}
+function runRecon(){call('/api/run/recon-pipeline','POST',{target:state.target(),scope:state.scope()})}
+function runJsUrl(){call('/api/run/js-url','POST',{target:state.target(),scope:state.scope(),url:$('jsUrl').value,ai_summary:false})}
+function runNuclei(){call('/api/run/nuclei-safe','POST',{target:state.target(),scope:state.scope(),urls_file:$('urlsFile').value})}
+function runGraphql(){call('/api/run/graphql-analyze','POST',{target:state.target(),scope:state.scope(),endpoint:$('graphqlEndpoint').value})}
+function runOauth(){call('/api/run/oauth-check','POST',{target:state.target(),scope:state.scope(),url:$('oauthUrl').value})}
+function runIdor(){call('/api/run/idor-plan','POST',{target:state.target(),scope:state.scope(),replay_file:$('replayFile').value})}
+function runReport(){call('/api/report-auto','POST',{target:state.target(),finding:$('finding').value})}
+function runChat(){call('/api/chat','POST',{target:state.target(),scope:state.scope(),message:$('chatMsg').value})}
+</script>
+</body></html>
