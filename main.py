@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+
 from core.tools import list_tools
 from core.scope import validate_scope
 from core.report import create_report
@@ -16,6 +18,18 @@ def main():
     recon.add_argument('target')
     recon.add_argument('--scope', default='scope.yaml')
 
+    classify = sub.add_parser('classify-endpoints')
+    classify.add_argument('target')
+    classify.add_argument('--input', required=True, help='Path to file with one endpoint per line')
+    classify.add_argument('--scope', default='scope.yaml')
+
+    authdiff = sub.add_parser('auth-diff')
+    authdiff.add_argument('target')
+    authdiff.add_argument('--endpoint', required=True)
+    authdiff.add_argument('--unauth-file', required=True)
+    authdiff.add_argument('--auth-file', required=True)
+    authdiff.add_argument('--scope', default='scope.yaml')
+
     js = sub.add_parser('js')
     js.add_argument('target')
     js.add_argument('--scope', default='scope.yaml')
@@ -30,6 +44,8 @@ def main():
     report = sub.add_parser('report')
     report.add_argument('finding')
     report.add_argument('--target', required=True)
+    report.add_argument('--ai-draft', action='store_true')
+    report.add_argument('--evidence-file', help='Optional markdown/text file used as report evidence context')
 
     args = parser.parse_args()
 
@@ -52,7 +68,8 @@ def main():
         print(plan_next_step(args.target))
 
     elif args.command == 'report':
-        create_report(args.finding, args.target)
+        evidence = _read_text(args.evidence_file) if args.evidence_file else ''
+        create_report(args.finding, args.target, ai_draft=args.ai_draft, evidence=evidence)
 
     else:
         parser.print_help()
