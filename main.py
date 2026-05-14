@@ -3,7 +3,7 @@ from pathlib import Path
 
 from core.tools import list_tools
 from core.scope import validate_scope
-from core.report import create_report
+from core.report import create_report, create_report_from_evidence
 from ai.reasoner import plan_next_step
 from modules.recon import run_recon
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
@@ -12,6 +12,9 @@ from modules.traffic_import import import_burp_xml, import_caido_json
 from modules.evidence_manager import init_evidence_tree
 from modules.idor_bola import analyze_idor_from_replay
 from modules.idor import generate_idor_plan, run_idor_test
+from modules.js_routes import extract_js_routes
+from modules.nuclei_safe import run_nuclei_safe
+from modules.graphql import graphql_check
 from core.job_queue import JobQueue
 
 
@@ -67,6 +70,32 @@ def main():
     idor_test.add_argument('--user-a-token', required=True)
     idor_test.add_argument('--user-b-token', required=True)
     idor_test.add_argument('--scope', default='scope.yaml')
+
+
+    idor_engine = sub.add_parser('idor-engine')
+    idor_engine.add_argument('target')
+    idor_engine.add_argument('--replay-file', required=True)
+    idor_engine.add_argument('--plan-out', default='evidence_plan.json')
+    idor_engine.add_argument('--scope', default='scope.yaml')
+
+    js_routes = sub.add_parser('js-routes')
+    js_routes.add_argument('target')
+    js_routes.add_argument('--js-file', required=True)
+    js_routes.add_argument('--scope', default='scope.yaml')
+
+    nuclei_safe = sub.add_parser('nuclei-safe')
+    nuclei_safe.add_argument('target')
+    nuclei_safe.add_argument('--urls-file', required=True)
+    nuclei_safe.add_argument('--scope', default='scope.yaml')
+
+    gql = sub.add_parser('graphql-analyze')
+    gql.add_argument('target')
+    gql.add_argument('--endpoint', required=True)
+    gql.add_argument('--scope', default='scope.yaml')
+
+    report_auto = sub.add_parser('report-auto')
+    report_auto.add_argument('finding')
+    report_auto.add_argument('--target', required=True)
 
     capture = sub.add_parser('capture-traffic')
     capture.add_argument('url')
@@ -136,6 +165,27 @@ def main():
         validate_scope(args.target, args.scope)
         result = run_idor_test(args.target, args.plan, args.user_a_token, args.user_b_token)
         print(result)
+
+
+    elif args.command == 'idor-engine':
+        validate_scope(args.target, args.scope)
+        plan = generate_idor_plan(args.target, args.replay_file)
+        print(plan)
+
+    elif args.command == 'js-routes':
+        validate_scope(args.target, args.scope)
+        print(extract_js_routes(args.target, args.js_file))
+
+    elif args.command == 'nuclei-safe':
+        validate_scope(args.target, args.scope)
+        print(run_nuclei_safe(args.target, args.urls_file))
+
+    elif args.command == 'graphql-analyze':
+        validate_scope(args.target, args.scope)
+        print(graphql_check(args.endpoint, args.target))
+
+    elif args.command == 'report-auto':
+        print(create_report_from_evidence(args.finding, args.target))
 
     elif args.command == 'capture-traffic':
         result = BrowserCapture().capture(args.url, wait_ms=args.wait_ms)
