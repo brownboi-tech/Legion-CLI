@@ -14,3 +14,6 @@ class ReplayDiffRequest(TargetRequest):
     request_file: str
     session_a: str
     session_b: str
+
+class RankRequest(TargetRequest):
+    pass

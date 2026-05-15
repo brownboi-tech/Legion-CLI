@@ -23,6 +23,7 @@ from modules.traffic_summary import traffic_summary
 from web.agent import terminal_chat
 from modules.security_workflows import race_condition_workflow,payment_logic_workflow,ssrf_chain_workflow,request_smuggling_workflow,mobile_reversing_workflow,cloud_misconfig_workflow,business_logic_workflow
 from modules.replay_engine import replay_diff
+from modules.finding_ranker import rank_findings
 
 
 def _read_text(path: str) -> str:
@@ -65,6 +66,7 @@ def main():
     sft = sub.add_parser('scope-from-text'); sft.add_argument('program'); sft.add_argument('--file', required=True)
     sw = sub.add_parser('security-workflow'); sw.add_argument('target'); sw.add_argument('--type', required=True, choices=['race','payment','ssrf','smuggling','mobile','cloud','business']); sw.add_argument('--scope', default='scope.yaml')
     rd = sub.add_parser('replay-diff'); rd.add_argument('target'); rd.add_argument('--request-file', required=True); rd.add_argument('--session-a', required=True); rd.add_argument('--session-b', required=True); rd.add_argument('--scope', default='scope.yaml')
+    rf = sub.add_parser('rank-findings'); rf.add_argument('target'); rf.add_argument('--scope', default='scope.yaml')
     ts = sub.add_parser('traffic-summary'); ts.add_argument('target')
     sub.add_parser('agent-chat')
     args = parser.parse_args()
@@ -99,6 +101,7 @@ def main():
         elif args.command == 'traffic-summary': print(traffic_summary(args.target))
         elif args.command == 'agent-chat': terminal_chat()
         elif args.command == 'replay-diff': validate_scope(args.target, args.scope); print(replay_diff(args.target, args.request_file, args.session_a, args.session_b))
+        elif args.command == 'rank-findings': validate_scope(args.target, args.scope); print(rank_findings(args.target))
         elif args.command == 'security-workflow':
             validate_scope(args.target, args.scope)
             mapping = {

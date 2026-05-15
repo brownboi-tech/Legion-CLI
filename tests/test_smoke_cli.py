@@ -31,3 +31,8 @@ def test_scope_file_missing_is_handled():
 def test_security_workflow_command_exists():
     r = run_cmd(['--help'])
     assert 'security-workflow' in r.stdout
+
+
+def test_rank_findings_command_exists():
+    r = run_cmd(['--help'])
+    assert 'rank-findings' in r.stdout
