@@ -1,74 +1,53 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Legion Dashboard v1</title>
-  <style>
-    body{background:#0b0f14;color:#d2f7ff;font-family:ui-monospace,Consolas;padding:16px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .card{background:#111826;border:1px solid #24344d;border-radius:10px;padding:12px}
-    input{width:100%;margin:4px 0;padding:8px;background:#0d1420;color:#d2f7ff;border:1px solid #2b3d5a;border-radius:6px}
-    button{margin:4px;padding:8px 10px;background:#173156;color:#c7f4ff;border:1px solid #2f4d75;border-radius:6px;cursor:pointer}
-    pre{background:#06090f;padding:10px;border-radius:8px;max-height:340px;overflow:auto}
-    .loading{color:#ffd166}.error{color:#ff6b6b}
-  </style>
-</head>
-<body>
-<h1>⚡ Legion Dashboard v1</h1>
-<div class="grid">
-  <div class="card">
-    <h3>Inputs</h3>
-    <input id="target" placeholder="target" />
-    <input id="scope" value="scope.yaml" placeholder="scope file" />
-    <input id="jsUrl" placeholder="JS URL" />
-    <input id="urlsFile" placeholder="URLs file" />
-    <input id="graphqlEndpoint" placeholder="GraphQL endpoint" />
-    <input id="oauthUrl" placeholder="OAuth URL" />
-    <input id="replayFile" placeholder="Replay file" />
-    <input id="finding" placeholder="Finding name" />
-    <input id="chatMsg" placeholder="Chat message" />
-    <input id="programName" placeholder="Program name" />
-    <textarea id="scopeText" placeholder="Paste program scope/rules text" style="width:100%;height:120px;background:#0d1420;color:#d2f7ff;border:1px solid #2b3d5a;border-radius:6px"></textarea>
-  </div>
-  <div class="card">
-    <h3>Actions</h3>
-    <button onclick="loadTools()">Load Tools</button><button onclick="loadTargets()">Load Targets</button>
-    <button onclick="loadEvidence()">Load Evidence</button><button onclick="loadFindings()">Load Findings</button>
-    <button onclick="runRecon()">Run Recon Pipeline</button><button onclick="runJsUrl()">Analyze JS URL</button>
-    <button onclick="runNuclei()">Run Nuclei Safe</button><button onclick="runGraphql()">Analyze GraphQL</button>
-    <button onclick="runOauth()">Check OAuth</button><button onclick="runIdor()">Generate IDOR Plan</button>
-    <button onclick="runReport()">Generate Report From Evidence</button><button onclick="runChat()">Send Chat Command To Legion Agent</button>
-    <button onclick="createScope()">Create Scope From Chat</button>
-    <div id="status"></div>
-  </div>
+<!doctype html><html><head><meta charset='utf-8'/><title>Legion Command Center</title>
+<style>
+body{margin:0;background:#0a0f16;color:#d8f3ff;font-family:Inter,Segoe UI,Arial}.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{background:#0d1522;padding:16px;border-right:1px solid #21314a}.side h2{color:#7cf0ff}.side div{padding:8px 0;color:#9ec6df}
+.main{display:flex;flex-direction:column}.top{display:flex;gap:8px;padding:10px;border-bottom:1px solid #21314a;background:#0f1a2a;flex-wrap:wrap}
+input,textarea,button{background:#111d30;color:#d8f3ff;border:1px solid #2d4363;border-radius:8px;padding:8px}button{cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:12px}.card{background:#0f1a2a;border:1px solid #243a58;border-radius:12px;padding:12px}
+pre{background:#060b12;border-radius:8px;padding:10px;max-height:260px;overflow:auto}.chat{max-height:280px;overflow:auto}
+.msg{margin:8px 0;padding:8px;border-radius:10px}.u{background:#17365b}.a{background:#1f2937}.row{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}}
+</style></head><body>
+<div class='app'>
+<aside class='side'><h2>Legion</h2><div>Overview</div><div>Recon</div><div>Traffic Intelligence</div><div>JS Intel</div><div>API/Auth</div><div>IDOR/BOLA</div><div>GraphQL</div><div>OAuth</div><div>Nuclei</div><div>Evidence</div><div>Reports</div><div>Legion Agent</div></aside>
+<main class='main'>
+<div class='top'>
+<input id='target' placeholder='target'/><input id='scope' value='scope.yaml' placeholder='scope file'/>
+<span id='status'>● Idle</span><button onclick='loadTools()'>Load Tools</button><button onclick='runRecon()'>Run Recon</button>
+<button onclick='copyOutput()'>Copy Output</button><button onclick='clearLogs()'>Clear Logs</button>
 </div>
-<div class="grid">
-  <div class="card"><h3>Results (JSON)</h3><pre id="results">{}</pre></div>
-  <div class="card"><h3>Latest Logs/Output</h3><pre id="logs">Ready.</pre></div>
-</div>
+<div class='grid'>
+<div class='card'><h3>Overview</h3><pre id='cards'>{}</pre></div>
+<div class='card'><h3>Traffic Panel</h3><p>Browser → Burp/Caido Proxy → Export → Import</p><input id='burpFile' placeholder='Burp XML path'/><input id='caidoFile' placeholder='Caido JSON path'/><div class='row'><button onclick='importBurp()'>Import Burp</button><button onclick='importCaido()'>Import Caido</button><button onclick='trafficSummary()'>Traffic Summary</button></div><small>Dashboard port: 9000, Proxy: 8080/8081</small></div>
+<div class='card'><h3>Module Actions</h3><input id='jsUrl' placeholder='JS URL'/><input id='urlsFile' placeholder='URLs file'/><input id='graphqlEndpoint' placeholder='GraphQL endpoint'/><input id='oauthUrl' placeholder='OAuth URL'/><input id='replayFile' placeholder='Replay file'/><input id='finding' placeholder='Finding name'/><div class='row'><button onclick='runJs()'>JS URL</button><button onclick='runNuclei()'>Nuclei Safe</button><button onclick='runGraphql()'>GraphQL</button><button onclick='runOauth()'>OAuth</button><button onclick='runIdor()'>IDOR Plan</button><button onclick='runReport()'>Report</button></div></div>
+<div class='card'><h3>JSON Results</h3><pre id='results'>{}</pre></div>
+<div class='card'><h3>Terminal</h3><pre id='logs'>Ready.</pre></div>
+<div class='card'><h3>Legion Agent</h3><div id='chat' class='chat'></div><textarea id='chatMsg' placeholder='Ask Legion...'></textarea><div class='row'><button onclick='sendChat()'>Send</button><button id='confirmBtn' onclick='confirmAction()' disabled>Confirm Pending</button></div></div>
+</div></main></div>
 <script>
-const $=id=>document.getElementById(id);
-const state={target:()=>$('target').value,scope:()=>$('scope').value};
-function setLoading(v){$('status').innerHTML=v?'<span class="loading">Loading...</span>':''}
-function log(msg,err=false){$('logs').textContent=msg;$('logs').className=err?'error':''}
-async function call(path,method='GET',body=null){
-  try{setLoading(true);log('Calling '+path);const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):null});
-    const txt=await r.text();let data;try{data=JSON.parse(txt)}catch{data={raw:txt}};$('results').textContent=JSON.stringify(data,null,2);
-    if(!r.ok){log('Error: '+txt,true)}else{log('Success: '+path)}
-  }catch(e){log('Request failed: '+e,true)}finally{setLoading(false)}
+const $=id=>document.getElementById(id); let sessionId=null; let pending=false;
+function setStatus(s){$('status').textContent='● '+s} function log(t){$('logs').textContent=t}
+function savePrefs(){localStorage.setItem('legion_target',$('target').value);localStorage.setItem('legion_scope',$('scope').value)}
+function loadPrefs(){ $('target').value=localStorage.getItem('legion_target')||''; $('scope').value=localStorage.getItem('legion_scope')||'scope.yaml'; }
+async function call(path,method='GET',body=null){savePrefs();setStatus('Loading');
+  try{document.querySelectorAll('button').forEach(b=>b.disabled=true); const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):null}); const txt=await r.text(); let j; try{j=JSON.parse(txt)}catch{j={raw:txt}}; $('results').textContent=JSON.stringify(j,null,2); log(r.ok?'OK '+path:'ERROR '+txt); return j;
+  }catch(e){log('Request failed '+e);return null}finally{document.querySelectorAll('button').forEach(b=>b.disabled=false); $('confirmBtn').disabled=!pending; setStatus('Idle')}
 }
-function loadTools(){call('/api/tools')}
-function loadTargets(){call('/api/targets')}
-function loadEvidence(){call('/api/evidence/'+state.target())}
-function loadFindings(){call('/api/findings/'+state.target())}
-function runRecon(){call('/api/run/recon-pipeline','POST',{target:state.target(),scope:state.scope()})}
-function runJsUrl(){call('/api/run/js-url','POST',{target:state.target(),scope:state.scope(),url:$('jsUrl').value,ai_summary:false})}
-function runNuclei(){call('/api/run/nuclei-safe','POST',{target:state.target(),scope:state.scope(),urls_file:$('urlsFile').value})}
-function runGraphql(){call('/api/run/graphql-analyze','POST',{target:state.target(),scope:state.scope(),endpoint:$('graphqlEndpoint').value})}
-function runOauth(){call('/api/run/oauth-check','POST',{target:state.target(),scope:state.scope(),url:$('oauthUrl').value})}
-function runIdor(){call('/api/run/idor-plan','POST',{target:state.target(),scope:state.scope(),replay_file:$('replayFile').value})}
-function runReport(){call('/api/report-auto','POST',{target:state.target(),finding:$('finding').value})}
-function runChat(){call('/api/chat','POST',{target:state.target(),scope:state.scope(),message:$('chatMsg').value})}
-function createScope(){call('/api/scope/from-chat','POST',{program:$('programName').value,message:$('scopeText').value})}
-</script>
-</body></html>
+async function loadTools(){const j=await call('/api/tools'); if(!j)return; const t=j.tools||[]; const ins=t.filter(x=>x.installed).length; $('cards').textContent=JSON.stringify({installed_tools:ins,missing_tools:t.length-ins,current_target:$('target').value},null,2)}
+function runRecon(){call('/api/run/recon-pipeline','POST',{target:$('target').value,scope:$('scope').value})}
+function runJs(){call('/api/run/js-url','POST',{target:$('target').value,scope:$('scope').value,url:$('jsUrl').value,ai_summary:false})}
+function runNuclei(){call('/api/run/nuclei-safe','POST',{target:$('target').value,scope:$('scope').value,urls_file:$('urlsFile').value})}
+function runGraphql(){call('/api/run/graphql-analyze','POST',{target:$('target').value,scope:$('scope').value,endpoint:$('graphqlEndpoint').value})}
+function runOauth(){call('/api/run/oauth-check','POST',{target:$('target').value,scope:$('scope').value,url:$('oauthUrl').value})}
+function runIdor(){call('/api/run/idor-plan','POST',{target:$('target').value,scope:$('scope').value,replay_file:$('replayFile').value})}
+function runReport(){call('/api/report-auto','POST',{target:$('target').value,finding:$('finding').value})}
+function importBurp(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Burp traffic from '+$('burpFile').value,session_id:sessionId})}
+function importCaido(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Caido traffic from '+$('caidoFile').value,session_id:sessionId})}
+function trafficSummary(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'traffic summary',session_id:sessionId})}
+function bubble(role,text){const d=document.createElement('div'); d.className='msg '+(role==='user'?'u':'a'); d.textContent=text; $('chat').appendChild(d); $('chat').scrollTop=$('chat').scrollHeight;}
+async function sendChat(){const msg=$('chatMsg').value.trim(); if(!msg)return; bubble('user',msg); const j=await call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:msg,session_id:sessionId}); if(!j)return; sessionId=j.session_id||sessionId; pending=!!j.confirmation_required; $('confirmBtn').disabled=!pending; bubble('assistant',`${j.assistant_message}\nintent=${j.intent}\nsafety=${j.safety_level}\nroute=${j.tool_call?.tool}`)}
+async function confirmAction(){if(!sessionId)return; const j=await call('/api/chat/confirm','POST',{session_id:sessionId}); pending=false; $('confirmBtn').disabled=true; bubble('assistant',j.assistant_message||'confirmed')}
+function copyOutput(){navigator.clipboard.writeText($('results').textContent)} function clearLogs(){$('logs').textContent='cleared'}
+$('chatMsg').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')sendChat()}); loadPrefs();
+</script></body></html>

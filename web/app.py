@@ -12,13 +12,15 @@ from modules.oauth import oauth_check
 from modules.recon_pipeline import run_recon_pipeline
 from core.report import create_report_from_evidence
 from modules.scope_builder import create_scope_from_text
-from web.agent import parse_command, chat_with_agent
+from web.agent import model_parse
 from web.schemas import *
+from web.agent_memory import load_session, save_session
+from web.agent_safety import safety_for
+from web.agent_tools import dispatch
 
 app = FastAPI(title='Legion Dashboard API')
 static_dir = Path(__file__).parent / 'static'
 app.mount('/static', StaticFiles(directory=static_dir), name='static')
-
 @app.get('/')
 def index(): return FileResponse(static_dir / 'index.html')
 @app.get('/api/health')
@@ -27,16 +29,13 @@ def health(): return {'status': 'ok'}
 def tools(): return {'tools': get_tools_with_status()}
 @app.get('/api/targets')
 def targets():
-    r = Path('evidence')
-    return {'targets': sorted([p.name for p in r.iterdir() if p.is_dir()]) if r.exists() else []}
+    r = Path('evidence'); return {'targets': sorted([p.name for p in r.iterdir() if p.is_dir()]) if r.exists() else []}
 @app.get('/api/evidence/{target}')
 def evidence(target: str):
-    b = Path('evidence') / target
-    return {'files': sorted([str(p.relative_to(b)) for p in b.rglob('*') if p.is_file()]) if b.exists() else []}
+    b = Path('evidence') / target; return {'files': sorted([str(p.relative_to(b)) for p in b.rglob('*') if p.is_file()]) if b.exists() else []}
 @app.get('/api/findings/{target}')
 def findings(target: str):
-    f = Path('evidence') / target / 'ai-analysis'
-    return {'findings': sorted([p.name for p in f.glob('*.json')]) if f.exists() else []}
+    f = Path('evidence') / target / 'ai-analysis'; return {'findings': sorted([p.name for p in f.glob('*.json')]) if f.exists() else []}
 
 def _v(target, scope):
     try: validate_scope(target, scope)
@@ -55,12 +54,46 @@ def run_o(req: OAuthRequest): _v(req.target, req.scope); return oauth_check(req.
 def run_id(req: IDORPlanRequest): _v(req.target, req.scope); return generate_idor_plan(req.target, req.replay_file)
 @app.post('/api/report-auto')
 def report_auto(req: ReportRequest): return {'report': create_report_from_evidence(req.finding, req.target)}
+@app.post('/api/scope/from-chat')
+def scope_from_chat(req: ScopeFromChatRequest): return create_scope_from_text(req.program, req.message, save=True)
+
 @app.post('/api/chat')
 def chat(req: ChatRequest):
     _v(req.target, req.scope)
-    parsed = parse_command(req.message)
-    return {'agent': parsed, 'agent_reply': chat_with_agent(req.message)}
+    sid, mem = load_session(req.session_id)
+    mem['current_target']=req.target; mem['current_scope']=req.scope
+    parsed = model_parse(req.message, {'target':req.target,'scope':req.scope})
+    intent = parsed.get('intent','none'); params = parsed.get('params',{})
+    tool_call = {'tool': intent, 'params': params}
+    safety = safety_for(tool_call)
+    confirm = safety == 'approval'
+    result = None
+    if intent and intent != 'none' and safety == 'safe':
+        params.setdefault('target', req.target)
+        result = dispatch(intent, params)
+    elif confirm:
+        mem['pending_confirmation'] = {'tool': intent, 'params': {**params, 'target': req.target}}
+    mem['messages'].append({'role':'user','content':req.message})
+    save_session(sid, mem)
+    return {
+        'assistant_message': parsed.get('explanation','Ready.'),
+        'intent': intent,
+        'tool_call': tool_call,
+        'safety_level': safety,
+        'confirmation_required': confirm,
+        'result': result,
+        'next_suggestions': parsed.get('next_suggestions', []),
+        'session_id': sid,
+    }
 
-@app.post('/api/scope/from-chat')
-def scope_from_chat(req: ScopeFromChatRequest):
-    return create_scope_from_text(req.program, req.message, save=True)
+@app.post('/api/chat/confirm')
+def chat_confirm(req: ChatConfirmRequest):
+    sid, mem = load_session(req.session_id)
+    pending = mem.get('pending_confirmation')
+    if not pending:
+        return {'assistant_message':'No pending confirmation.', 'result':None}
+    result = dispatch(pending['tool'], pending['params'])
+    mem['pending_confirmation'] = None
+    mem['last_results'] = result
+    save_session(sid, mem)
+    return {'assistant_message':'Approved action executed.', 'result':result, 'session_id':sid}

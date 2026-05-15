@@ -47,7 +47,6 @@ cd Legion-CLI
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-playwright install
 ```
 
 ---
@@ -167,7 +166,6 @@ cd Legion-CLI
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-playwright install
 
 # compile check
 python3 -m py_compile main.py core/*.py ai/*.py modules/*.py storage/*.py traffic/*.py browser/*.py
@@ -240,3 +238,33 @@ These produce structured, high-value workflow plans for:
 - mobile reversing
 - cloud misconfiguration/exploitation checks
 - complex business logic workflows
+
+
+## Legion Agent Chat Mode
+
+Set API key:
+
+```bash
+export OPENAI_API_KEY=your_key
+export LEGION_OPENAI_MODEL=gpt-4.1-mini
+```
+
+Start dashboard:
+
+```bash
+python3 main.py dashboard --host 127.0.0.1 --port 9000
+```
+
+Use Burp/Caido proxy on `127.0.0.1:8080` or `8081` (different from dashboard port).
+
+Example prompts:
+- Run recon on example.com
+- Analyze JS URL https://example.com/app.js
+- Import Burp traffic from burp_export.xml
+- Create an IDOR plan from caido_normalized_sessions.json
+- Generate report from evidence
+
+Safety:
+- approval actions require `/api/chat/confirm` in UI
+- manual/risky intents return checklist-style guidance
+- secrets are masked before model prompts

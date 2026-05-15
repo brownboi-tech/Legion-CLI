@@ -8,7 +8,6 @@ from ai.reasoner import plan_next_step
 from modules.recon import run_recon
 from modules.recon_pipeline import run_recon_pipeline
 from modules.api_analyzer import classify_and_store_endpoints, run_auth_diff
-from browser.playwright_capture import BrowserCapture
 from modules.traffic_import import import_burp_xml, import_caido_json
 from modules.evidence_manager import init_evidence_tree
 from modules.idor_bola import analyze_idor_from_replay
@@ -20,6 +19,8 @@ from modules.js_analyzer import analyze_js_url, analyze_js_file
 from modules.oauth import oauth_check
 from core.job_queue import JobQueue
 from modules.scope_builder import create_scope_from_file
+from modules.traffic_summary import traffic_summary
+from web.agent import terminal_chat
 from modules.security_workflows import race_condition_workflow,payment_logic_workflow,ssrf_chain_workflow,request_smuggling_workflow,mobile_reversing_workflow,cloud_misconfig_workflow,business_logic_workflow
 
 
@@ -53,7 +54,6 @@ def main():
     gql = sub.add_parser('graphql-analyze'); gql.add_argument('target'); gql.add_argument('--endpoint', required=True); gql.add_argument('--scope', default='scope.yaml')
     oauth = sub.add_parser('oauth-check'); oauth.add_argument('target'); oauth.add_argument('--url', required=True); oauth.add_argument('--scope', default='scope.yaml')
     report_auto = sub.add_parser('report-auto'); report_auto.add_argument('finding'); report_auto.add_argument('--target', required=True)
-    capture = sub.add_parser('capture-traffic'); capture.add_argument('url'); capture.add_argument('--wait-ms', type=int, default=5000)
     imp = sub.add_parser('import-traffic'); imp.add_argument('source', choices=['burp', 'caido']); imp.add_argument('file'); imp.add_argument('--target')
     js_url = sub.add_parser('js-url'); js_url.add_argument('target'); js_url.add_argument('--url', required=True); js_url.add_argument('--ai-summary', action='store_true'); js_url.add_argument('--scope', default='scope.yaml')
     js_file = sub.add_parser('js-file'); js_file.add_argument('target'); js_file.add_argument('--file', required=True); js_file.add_argument('--ai-summary', action='store_true'); js_file.add_argument('--scope', default='scope.yaml')
@@ -63,6 +63,8 @@ def main():
     report = sub.add_parser('report'); report.add_argument('finding'); report.add_argument('--target', required=True); report.add_argument('--ai-draft', action='store_true'); report.add_argument('--evidence-file')
     sft = sub.add_parser('scope-from-text'); sft.add_argument('program'); sft.add_argument('--file', required=True)
     sw = sub.add_parser('security-workflow'); sw.add_argument('target'); sw.add_argument('--type', required=True, choices=['race','payment','ssrf','smuggling','mobile','cloud','business']); sw.add_argument('--scope', default='scope.yaml')
+    ts = sub.add_parser('traffic-summary'); ts.add_argument('target')
+    sub.add_parser('agent-chat')
     args = parser.parse_args()
 
     try:
@@ -84,7 +86,6 @@ def main():
         elif args.command == 'graphql-analyze': validate_scope(args.target, args.scope); print(graphql_check(args.endpoint, args.target))
         elif args.command == 'oauth-check': validate_scope(args.target, args.scope); print(oauth_check(args.target, args.url))
         elif args.command == 'report-auto': print(create_report_from_evidence(args.finding, args.target))
-        elif args.command == 'capture-traffic': print(BrowserCapture().capture(args.url, wait_ms=args.wait_ms))
         elif args.command == 'import-traffic': print(import_burp_xml(args.file, target=args.target) if args.source == 'burp' else import_caido_json(args.file, target=args.target))
         elif args.command == 'js-url': validate_scope(args.target, args.scope); print(analyze_js_url(args.target, args.url, ai_summary=args.ai_summary))
         elif args.command == 'js-file': validate_scope(args.target, args.scope); print(analyze_js_file(args.target, args.file, ai_summary=args.ai_summary))
@@ -93,6 +94,8 @@ def main():
         elif args.command == 'ai-plan': print(plan_next_step(args.target))
         elif args.command == 'report': create_report(args.finding, args.target, ai_draft=args.ai_draft, evidence=_read_text(args.evidence_file) if args.evidence_file else '')
         elif args.command == 'scope-from-text': print(create_scope_from_file(args.program, args.file))
+        elif args.command == 'traffic-summary': print(traffic_summary(args.target))
+        elif args.command == 'agent-chat': terminal_chat()
         elif args.command == 'security-workflow':
             validate_scope(args.target, args.scope)
             mapping = {

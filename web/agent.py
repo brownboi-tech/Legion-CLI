@@ -1,57 +1,51 @@
 import os
 import re
+import json
 from openai import OpenAI
 
-ACTION_MAP = {
-    'recon-pipeline': {'safety_level': 'safe', 'route': '/api/run/recon-pipeline', 'required_parameters': ['target', 'scope']},
-    'js-url': {'safety_level': 'safe', 'route': '/api/run/js-url', 'required_parameters': ['target', 'scope', 'url']},
-    'nuclei-safe': {'safety_level': 'approval', 'route': '/api/run/nuclei-safe', 'required_parameters': ['target', 'scope', 'urls_file']},
-    'graphql-analyze': {'safety_level': 'safe', 'route': '/api/run/graphql-analyze', 'required_parameters': ['target', 'scope', 'endpoint']},
-    'oauth-check': {'safety_level': 'safe', 'route': '/api/run/oauth-check', 'required_parameters': ['target', 'scope', 'url']},
-    'idor-plan': {'safety_level': 'safe', 'route': '/api/run/idor-plan', 'required_parameters': ['target', 'scope', 'replay_file']},
-    'report-auto': {'safety_level': 'safe', 'route': '/api/report-auto', 'required_parameters': ['target', 'finding']},
-    'manual-checklist': {'safety_level': 'manual', 'route': None, 'required_parameters': []},
-    'none': {'safety_level': 'safe', 'route': None, 'required_parameters': []},
-}
+ALLOWED_TOOLS = ['run_recon_pipeline','analyze_js_url','run_nuclei_safe','analyze_graphql','check_oauth','import_burp','import_caido','generate_idor_plan','generate_report_from_evidence','traffic_summary','list_targets','list_evidence','list_findings','get_tool_status']
 
 
-def parse_command(message: str) -> dict:
-    text = message.lower().strip()
-    action = 'none'
-    explanation = 'No actionable command recognized.'
-
-    if any(x in text for x in ['sqlmap', 'xss payload spray', 'destructive', 'exploit now']):
-        action = 'manual-checklist'
-        explanation = 'Requested action is high-risk/manual. Returning checklist-only guidance.'
-    elif 'recon' in text:
-        action = 'recon-pipeline'; explanation = 'Detected recon request.'
-    elif 'js' in text and 'http' in text:
-        action = 'js-url'; explanation = 'Detected JS URL analysis request.'
-    elif 'nuclei' in text:
-        action = 'nuclei-safe'; explanation = 'Detected nuclei safe scan request.'
-    elif 'graphql' in text:
-        action = 'graphql-analyze'; explanation = 'Detected GraphQL analysis request.'
-    elif 'oauth' in text:
-        action = 'oauth-check'; explanation = 'Detected OAuth URL check request.'
-    elif 'idor' in text:
-        action = 'idor-plan'; explanation = 'Detected IDOR planning request.'
-    elif 'report' in text:
-        action = 'report-auto'; explanation = 'Detected auto-report generation request.'
-
-    meta = ACTION_MAP[action]
-    return {
-        'parsed_action': action,
-        'safety_level': meta['safety_level'],
-        'suggested_api_route': meta['route'],
-        'required_parameters': meta['required_parameters'],
-        'explanation': explanation,
-        'extracted_url': (re.search(r'https?://\S+', message).group(0) if re.search(r'https?://\S+', message) else ''),
-    }
+def _mask(text: str) -> str:
+    text = re.sub(r'(?i)(authorization\s*:\s*bearer\s+)[A-Za-z0-9._\-]+', r'\1***MASKED***', text)
+    text = re.sub(r'(?i)(cookie\s*:\s*)[^\n]+', r'\1***MASKED***', text)
+    text = re.sub(r'(?i)(api[_-]?key|token|secret|sessionid)["\'\s:=]+([A-Za-z0-9._\-]{8,})', r'\1=***MASKED***', text)
+    return text
 
 
-def chat_with_agent(message: str) -> str:
+def local_parse(message: str) -> dict:
+    t=message.lower()
+    if 'recon' in t: return {'intent':'run_recon_pipeline','params':{}}
+    if 'analyze' in t and 'js' in t: return {'intent':'analyze_js_url','params':{'url': (re.search(r'https?://\S+',message).group(0) if re.search(r'https?://\S+',message) else '')}}
+    if 'nuclei' in t: return {'intent':'run_nuclei_safe','params':{}}
+    if 'graphql' in t: return {'intent':'analyze_graphql','params':{}}
+    if 'oauth' in t: return {'intent':'check_oauth','params':{'url': (re.search(r'https?://\S+',message).group(0) if re.search(r'https?://\S+',message) else '')}}
+    if 'burp' in t and 'import' in t: return {'intent':'import_burp','params':{}}
+    if 'caido' in t and 'import' in t: return {'intent':'import_caido','params':{}}
+    if 'idor' in t: return {'intent':'generate_idor_plan','params':{}}
+    if 'report' in t: return {'intent':'generate_report_from_evidence','params':{}}
+    if 'traffic summary' in t: return {'intent':'traffic_summary','params':{}}
+    return {'intent':'none','params':{}}
+
+
+def model_parse(message:str, context:dict):
     if not os.getenv('OPENAI_API_KEY'):
-        return 'OPENAI_API_KEY missing. Using local parser response.'
-    client = OpenAI()
-    resp = client.responses.create(model='gpt-4.1-mini', input=f'Provide concise operator guidance for this dashboard request: {message}')
-    return resp.output_text.strip()
+        return local_parse(message)
+    client=OpenAI()
+    prompt={
+      'system':'You are Legion agent for bug bounty only. Output strict JSON: {intent,params,explanation,next_suggestions}. Never ask to hack non-bounty targets.',
+      'allowed_tools':ALLOWED_TOOLS,
+      'context':context,
+      'message':_mask(message)
+    }
+    r=client.responses.create(model=os.getenv('LEGION_OPENAI_MODEL','gpt-4.1-mini'),input=json.dumps(prompt))
+    try:return json.loads(r.output_text)
+    except Exception:return local_parse(message)
+
+
+def terminal_chat():
+    print('Legion Agent Chat (type quit)')
+    while True:
+        msg=input('> ').strip()
+        if msg in {'quit','exit'}: break
+        print(local_parse(msg))
