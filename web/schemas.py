@@ -9,3 +9,8 @@ class ReportRequest(BaseModel): target: str; finding: str
 class ChatRequest(BaseModel): target: str; message: str; scope: str = 'scope.yaml'; session_id: str | None = None
 class ChatConfirmRequest(BaseModel): session_id: str
 class ScopeFromChatRequest(BaseModel): program: str; message: str
+
+class ReplayDiffRequest(TargetRequest):
+    request_file: str
+    session_a: str
+    session_b: str

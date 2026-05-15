@@ -12,6 +12,7 @@ from modules.oauth import oauth_check
 from modules.recon_pipeline import run_recon_pipeline
 from core.report import create_report_from_evidence
 from modules.scope_builder import create_scope_from_text
+from modules.replay_engine import replay_diff
 from web.agent import model_parse
 from web.schemas import *
 from web.agent_memory import load_session, save_session
@@ -52,6 +53,8 @@ def run_gql(req: GraphQLRequest): _v(req.target, req.scope); return graphql_chec
 def run_o(req: OAuthRequest): _v(req.target, req.scope); return oauth_check(req.target, req.url)
 @app.post('/api/run/idor-plan')
 def run_id(req: IDORPlanRequest): _v(req.target, req.scope); return generate_idor_plan(req.target, req.replay_file)
+@app.post('/api/run/replay-diff')
+def run_replay_diff(req: ReplayDiffRequest): _v(req.target, req.scope); return replay_diff(req.target, req.request_file, req.session_a, req.session_b)
 @app.post('/api/report-auto')
 def report_auto(req: ReportRequest): return {'report': create_report_from_evidence(req.finding, req.target)}
 @app.post('/api/scope/from-chat')
