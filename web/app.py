@@ -16,7 +16,7 @@ from web.agent import model_parse
 from web.schemas import *
 from web.agent_memory import load_session, save_session
 from web.agent_safety import safety_for
-from web.agent_tools import dispatch
+from web.agent_tools import dispatch, missing_params, required_for
 
 app = FastAPI(title='Legion Dashboard API')
 static_dir = Path(__file__).parent / 'static'
@@ -61,22 +61,45 @@ def scope_from_chat(req: ScopeFromChatRequest): return create_scope_from_text(re
 def chat(req: ChatRequest):
     _v(req.target, req.scope)
     sid, mem = load_session(req.session_id)
-    mem['current_target']=req.target; mem['current_scope']=req.scope
-    parsed = model_parse(req.message, {'target':req.target,'scope':req.scope})
-    intent = parsed.get('intent','none'); params = parsed.get('params',{})
-    tool_call = {'tool': intent, 'params': params}
+    mem['current_target'] = req.target
+    mem['current_scope'] = req.scope
+
+    parsed = model_parse(req.message, {'target': req.target, 'scope': req.scope})
+    intent = parsed.get('intent', 'none')
+    params = parsed.get('params', {}) or {}
+    params.setdefault('target', req.target)
+
+    tool_call = {'tool': intent, 'params': params, 'required_parameters': required_for(intent)}
     safety = safety_for(tool_call)
+
+    missing = missing_params(intent, params) if intent != 'none' else []
+    if missing:
+        mem['messages'].append({'role': 'user', 'content': req.message})
+        save_session(sid, mem)
+        return {
+            'assistant_message': f"I need these fields before running {intent}: {', '.join(missing)}",
+            'intent': intent,
+            'tool_call': tool_call,
+            'safety_level': safety,
+            'confirmation_required': False,
+            'result': None,
+            'next_suggestions': [f"Provide: {m}" for m in missing],
+            'session_id': sid,
+        }
+
     confirm = safety == 'approval'
     result = None
     if intent and intent != 'none' and safety == 'safe':
-        params.setdefault('target', req.target)
         result = dispatch(intent, params)
     elif confirm:
-        mem['pending_confirmation'] = {'tool': intent, 'params': {**params, 'target': req.target}}
-    mem['messages'].append({'role':'user','content':req.message})
+        mem['pending_confirmation'] = {'tool': intent, 'params': params, 'preview': f"{intent} with {params}"}
+
+    mem['messages'].append({'role': 'user', 'content': req.message})
+    mem['last_results'] = result or mem.get('last_results', {})
     save_session(sid, mem)
+
     return {
-        'assistant_message': parsed.get('explanation','Ready.'),
+        'assistant_message': parsed.get('explanation', 'Ready.'),
         'intent': intent,
         'tool_call': tool_call,
         'safety_level': safety,
