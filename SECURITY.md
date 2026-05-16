@@ -7,7 +7,7 @@ Legion-CLI is a human-in-the-loop bug bounty automation toolkit for authorized s
 Legion-CLI should only be used for:
 
 - Assets you own.
-- Assets where you have explicit written authorization to test.
+- Assets where you have authorization to test.
 - In-scope targets from bug bounty or vulnerability disclosure programs.
 - Defensive testing in lab, staging, or internal environments.
 
@@ -38,7 +38,7 @@ Legion-CLI should enforce:
 - allowed domains only
 - out-of-scope exclusions
 - rate-limit awareness
-- no destructive testing by default
+- no destructive testing without user approval
 - approval for noisy or risky actions
 
 If scope is unclear, do not scan.
@@ -78,7 +78,7 @@ reports/
 
 If `OPENAI_API_KEY` is configured, Legion-CLI may use OpenAI for analysis, summarization, and report drafting.
 
-Before sending data to external APIs, Legion-CLI should mask or remove:
+Before sending data to external APIs, Legion-CLI should mask :
 
 - `Authorization` headers
 - cookies
