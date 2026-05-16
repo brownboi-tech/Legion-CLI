@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'/>
+<title>Legion Command Center</title>
+<style>
+:root{--bg:#060b14;--panel:rgba(13,23,40,.62);--line:#2e5fa455;--txt:#d6eeff;--muted:#8fb8de;--neon:#34c3ff;--ok:#4cffb0;--warn:#ffd166;--err:#ff5a6e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 75% -10%,#133b6d66,transparent),linear-gradient(180deg,#050913,#090f1a 50%,#070d15);color:var(--txt);font-family:Inter,Segoe UI,Arial}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}.side{padding:14px;border-right:1px solid var(--line);background:linear-gradient(180deg,#0b1525cc,#0a1220cc);backdrop-filter:blur(8px)}
+.side h2{margin:6px 0 14px;color:var(--neon);text-shadow:0 0 12px #34c3ff66}.side button{display:block;width:100%;margin:5px 0;text-align:left}
+.main{display:flex;flex-direction:column}.top{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line);background:#0b1627c9;backdrop-filter:blur(7px);flex-wrap:wrap;position:sticky;top:0;z-index:3}
+input,textarea,button,select{background:#0d1a2dcc;color:var(--txt);border:1px solid #2a5288;border-radius:10px;padding:8px;font-size:13px}
+button{cursor:pointer;transition:.15s}button:hover{border-color:var(--neon);box-shadow:0 0 12px #34c3ff55}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;padding:10px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;backdrop-filter:blur(10px)}
+.card h3{margin:0 0 8px;font-size:14px;color:#c5ebff}pre{background:#050a12cf;border-radius:10px;padding:8px;max-height:220px;overflow:auto;border:1px solid #1e385e66}
+.row{display:flex;gap:6px;flex-wrap:wrap}.pill{display:inline-block;padding:3px 9px;border:1px solid #2f5f98;border-radius:999px;font-size:11px}
+.badge-approval{color:#ffd166;border-color:#ffd166}.badge-manual{color:#ff8aa6;border-color:#ff8aa6}.hidden{display:none}
+.statusRow{display:grid;grid-template-columns:130px 72px 1fr 132px;gap:6px;align-items:center;margin:5px 0}.bar{height:8px;border-radius:10px;background:#10233ecc;border:1px solid #224a7c}.bar > span{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#1694ff,#6df5ff);width:0%}
+.finding{border:1px solid #2a4d78;border-radius:10px;padding:7px;margin:7px 0;background:#0a1524b5}.sev{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #345}
+.sev-critical{background:#3a0d13;color:#ff9aa6;border-color:#b3364b}.sev-high{background:#3a1a12;color:#ffb08f;border-color:#c34b34}.sev-medium{background:#3a2d10;color:#ffd98f;border-color:#b8942f}.sev-low{background:#102a3a;color:#95d6ff;border-color:#2a6ea3}.sev-info{background:#222a36;color:#b7c6d6;border-color:#556070}
+.group h4{margin:8px 0 4px}.file{display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-bottom:1px solid #1f355466;font-size:12px}
+#aiDock{position:fixed;right:16px;bottom:16px;width:390px;max-height:76vh;z-index:20;border:1px solid #2a5d95;background:#0a1526e8;border-radius:14px;backdrop-filter:blur(12px);box-shadow:0 0 30px #2ec4ff36}
+#aiDock .head{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line)}#chat{max-height:300px;overflow:auto;padding:8px}
+.msg{margin:7px 0;padding:8px;border-radius:10px;font-size:13px}.u{background:#13416e}.a{background:#1b2e44}.meta{font-size:11px;color:#97bbda;margin-top:4px}.ts{font-size:10px;opacity:.8;float:right}
+.typing{font-size:12px;color:#9cc7ea;padding:0 8px 8px}
+@media(max-width:980px){.app{grid-template-columns:1fr}.side{display:none}#aiDock{width:calc(100vw - 20px);right:10px;bottom:10px}}
+</style>
+</head>
+<body>
+<div class='app'>
+<aside class='side'><h2>LEGION // SOC</h2>
+<button onclick="selectTab('overview')">Overview</button><button onclick="selectTab('scan')">Scan Status</button><button onclick="selectTab('findings')">Findings</button><button onclick="selectTab('evidence')">Evidence</button></aside>
+<main class='main'>
+<div class='top'>
+<input id='target' placeholder='Target URL / Domain' style='min-width:260px'/><input id='scope' value='scope.yaml' placeholder='scope file'/>
+<span class='pill' id='status'>● Idle</span><span class='pill' id='activeScope'>Current active scope: scope.yaml</span>
+<button onclick='loadTools()'>Load Tools</button><button onclick='runRecon()'>Run Recon</button><button onclick='refreshFindings()'>Refresh Findings</button><button onclick='refreshEvidence()'>Refresh Evidence</button>
+</div>
+<div class='grid'>
+<div class='card tab overview'><h3>SOC Overview</h3><pre id='cards'>{}</pre></div>
+<div class='card tab scan'><h3>Scan Status</h3><div id='scanRows'></div></div>
+<div class='card tab findings'><h3>Vulnerability Assessment</h3><div id='findings'></div></div>
+<div class='card tab evidence'><h3>Evidence Viewer</h3><div id='evidence'></div></div>
+<div class='card'><h3>Module Actions</h3><input id='jsUrl' placeholder='JS URL'/><input id='urlsFile' placeholder='URLs file'/><input id='graphqlEndpoint' placeholder='GraphQL endpoint'/><input id='oauthUrl' placeholder='OAuth URL'/><input id='replayFile' placeholder='Replay file'/><input id='finding' placeholder='Finding name'/><div class='row'><button onclick='runJs()'>JS</button><button onclick='runNuclei()'>Nuclei</button><button onclick='runGraphql()'>GraphQL</button><button onclick='runOauth()'>OAuth</button><button onclick='runIdor()'>IDOR</button><button onclick='runReport()'>Report</button></div></div>
+<div class='card'><h3>Result Viewer</h3><div class='row'><button onclick='toggleJson()'>Collapse/Expand JSON</button><button onclick='copyOutput()'>Copy JSON</button><button onclick='clearOutput()'>Clear Output</button></div><pre id='results'>{}</pre><pre id='logs'>Ready.</pre></div>
+</div>
+</main></div>
+
+<div id='aiDock'><div class='head'><strong style='color:var(--neon)'>Legion Agent</strong><div><span id='approvalBadge' class='pill badge-approval hidden'>Approval Required</span> <span id='manualBadge' class='pill badge-manual hidden'>Manual Only</span> <button onclick='toggleChat()' id='dockBtn'>Hide</button></div></div>
+<div id='dockBody'><div id='chat'></div><div id='typing' class='typing hidden'>Legion is typing…</div><div style='padding:8px'><textarea id='chatMsg' placeholder='Ask Legion what to test next...' style='width:100%;min-height:80px'></textarea><div class='row'><button onclick='sendChat()'>Send</button><button onclick='aiNext()'>AI Next</button><button id='confirmBtn' onclick='confirmAction()' disabled>Confirm Pending</button><button id='runSuggestedBtn' onclick='runSuggested()' disabled>Run Suggested Safe Action</button></div></div></div></div>
+
+<script>
+const $=id=>document.getElementById(id); let sessionId=null; let pending=false; let lastAgent=null; let jsonCollapsed=false;
+const scans={recon:{label:'Recon Pipeline'},traffic:{label:'Traffic Import'},js:{label:'JS Analysis'},nuclei:{label:'Nuclei Safe'},graphql:{label:'GraphQL'},oauth:{label:'OAuth'},idor:{label:'IDOR Plan'},report:{label:'Report Builder'}};
+Object.keys(scans).forEach(k=>scans[k]={...scans[k],status:'idle',progress:0,last:'-',summary:'No data yet'});
+function now(){return new Date().toLocaleTimeString()}
+function setStatus(s){$('status').textContent='● '+s}
+function log(t){$('logs').textContent=t}
+function savePrefs(){localStorage.setItem('legion_target',$('target').value);localStorage.setItem('legion_scope',$('scope').value);localStorage.setItem('legion_chat_collapsed',$('dockBody').style.display==='none'?'1':'0');localStorage.setItem('legion_last_tab',document.body.dataset.tab||'overview');localStorage.setItem('legion_chat_history',$('chat').innerHTML)}
+function loadPrefs(){ $('target').value=localStorage.getItem('legion_target')||''; $('scope').value=localStorage.getItem('legion_scope')||'scope.yaml'; if(localStorage.getItem('legion_chat_collapsed')==='1')toggleChat(true); selectTab(localStorage.getItem('legion_last_tab')||'overview'); $('chat').innerHTML=localStorage.getItem('legion_chat_history')||''; }
+function selectTab(name){document.body.dataset.tab=name; document.querySelectorAll('.tab').forEach(c=>c.classList.add('hidden')); document.querySelectorAll('.'+name).forEach(c=>c.classList.remove('hidden')); savePrefs();}
+function renderScanRows(){ $('scanRows').innerHTML=Object.entries(scans).map(([k,v])=>`<div class='statusRow'><div>${v.label}</div><div>${v.status}</div><div><div class='bar'><span style='width:${v.progress}%'></span></div><div style='font-size:11px;color:#9bc1de'>${v.summary}</div></div><div style='font-size:11px'>${v.last}</div></div>`).join('')}
+function updScan(k,status,progress,summary){scans[k].status=status;scans[k].progress=progress;scans[k].summary=summary||scans[k].summary;scans[k].last=now();renderScanRows()}
+async function call(path,method='GET',body=null,scanKey=null){savePrefs();setStatus('Loading');
+  if(scanKey)updScan(scanKey,'running',30,'Action in progress');
+  try{const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):null}); const txt=await r.text(); let j; try{j=JSON.parse(txt)}catch{j={raw:txt}}; $('results').textContent=JSON.stringify(j,null,2);
+  if(!r.ok){const msg=(j.detail||j.raw||txt||'Unknown error'); log('Error: '+msg); if(scanKey)updScan(scanKey,'error',100,msg); return null}
+  log('OK '+path); if(scanKey)updScan(scanKey,'complete',100,'Completed successfully'); return j;
+  }catch(e){log('Request failed '+e); if(scanKey)updScan(scanKey,'error',100,'Network/API failure');return null}
+  finally{setStatus('Idle')}
+}
+function sevClass(s){s=(s||'info').toLowerCase(); if(s==='critical')return 'sev-critical'; if(s==='high')return 'sev-high'; if(s==='medium')return 'sev-medium'; if(s==='low')return 'sev-low'; return 'sev-info';}
+function addBubble(role,text,meta=''){const d=document.createElement('div'); d.className='msg '+(role==='user'?'u':'a'); d.innerHTML=`<div>${text}<span class='ts'>${now()}</span></div>${meta?`<div class='meta'>${meta}</div>`:''}`; $('chat').appendChild(d); $('chat').scrollTop=$('chat').scrollHeight; savePrefs();}
+function setTyping(v){$('typing').classList.toggle('hidden',!v)}
+function setBadges(safety){$('approvalBadge').classList.toggle('hidden',safety!=='approval'); $('manualBadge').classList.toggle('hidden',safety!=='manual')}
+async function sendChat(){const msg=$('chatMsg').value.trim(); if(!msg)return; addBubble('user',msg); setTyping(true); const j=await call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:msg,session_id:sessionId}); setTyping(false); if(!j)return; sessionId=j.session_id||sessionId; pending=!!j.confirmation_required; $('confirmBtn').disabled=!pending; lastAgent=j; setBadges(j.safety_level);
+ const meta=`intent=${j.intent} | safety=${j.safety_level} | route=${j.tool_call?.tool||'n/a'} | missing=${(j.tool_call?.required_parameters||[]).join(',')||'none'}`; addBubble('assistant',j.assistant_message||'Ready.',meta); $('runSuggestedBtn').disabled=!(j.safety_level==='safe'&&j.intent&&j.intent!=='none'); if(j.safety_level==='approval')updScan('recon','approval-needed',100,'Approval required before execution');}
+async function aiNext(){ $('chatMsg').value='What should I test next on this target?'; await sendChat(); }
+async function confirmAction(){if(!sessionId)return; const j=await call('/api/chat/confirm','POST',{session_id:sessionId}); pending=false; $('confirmBtn').disabled=true; addBubble('assistant',j?.assistant_message||'confirmed')}
+async function runSuggested(){ if(!lastAgent || lastAgent.safety_level!=='safe') return; const i=lastAgent.intent; if(i==='run_recon_pipeline') return runRecon(); if(i==='analyze_js_url') return runJs(); if(i==='run_nuclei_safe') return runNuclei(); if(i==='analyze_graphql') return runGraphql(); if(i==='check_oauth') return runOauth(); if(i==='generate_idor_plan') return runIdor(); if(i==='generate_report_from_evidence') return runReport(); }
+function toggleChat(forceCollapse=false){const b=$('dockBody'); const hidden=forceCollapse?true:b.style.display!=='none'?true:false; b.style.display=hidden?'none':'block'; $('dockBtn').textContent=hidden?'Show':'Hide'; savePrefs();}
+function toggleJson(){jsonCollapsed=!jsonCollapsed; $('results').style.display=jsonCollapsed?'none':'block'}
+function copyOutput(){navigator.clipboard.writeText($('results').textContent)} function clearOutput(){$('results').textContent='{}'} function clearLogs(){$('logs').textContent='cleared'}
+
+async function loadTools(){const j=await call('/api/tools'); if(!j)return; const t=j.tools||[]; const ins=t.filter(x=>x.installed).length; $('cards').textContent=JSON.stringify({installed_tools:ins,missing_tools:t.length-ins,current_target:$('target').value},null,2)}
+function runRecon(){call('/api/run/recon-pipeline','POST',{target:$('target').value,scope:$('scope').value},'recon')}
+function runJs(){call('/api/run/js-url','POST',{target:$('target').value,scope:$('scope').value,url:$('jsUrl').value,ai_summary:false},'js')}
+function runNuclei(){call('/api/run/nuclei-safe','POST',{target:$('target').value,scope:$('scope').value,urls_file:$('urlsFile').value},'nuclei')}
+function runGraphql(){call('/api/run/graphql-analyze','POST',{target:$('target').value,scope:$('scope').value,endpoint:$('graphqlEndpoint').value},'graphql')}
+function runOauth(){call('/api/run/oauth-check','POST',{target:$('target').value,scope:$('scope').value,url:$('oauthUrl').value},'oauth')}
+function runIdor(){call('/api/run/idor-plan','POST',{target:$('target').value,scope:$('scope').value,replay_file:$('replayFile').value},'idor')}
+function runReport(){call('/api/report-auto','POST',{target:$('target').value,finding:$('finding').value},'report')}
+function importBurp(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Burp traffic from path',session_id:sessionId},'traffic')}
+function importCaido(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Caido traffic from path',session_id:sessionId},'traffic')}
+
+async function refreshFindings(){const t=$('target').value; if(!t){$('findings').innerHTML='Set target first.'; return} const j=await call('/api/findings/'+encodeURIComponent(t)); if(!j)return; const arr=j.findings||[]; if(!arr.length){$('findings').innerHTML='No confirmed findings yet. Run recon, import traffic, and generate reports.'; return}
+ $('findings').innerHTML=arr.map(f=>`<div class='finding'><div><strong>${f.title||f.name||f}</strong> <span class='sev ${sevClass(f.severity)}'>${(f.severity||'unknown').toUpperCase()}</span></div><div style='font-size:12px;color:#9ec3df'>${f.category||'evidence artifact'}</div></div>`).join('')}
+async function refreshEvidence(){const t=$('target').value; if(!t){$('evidence').innerHTML='Set target first.'; return} const j=await call('/api/evidence/'+encodeURIComponent(t)); if(!j)return; const files=j.files||[]; const groups=['requests','responses','replay','ai-analysis','screenshots']; let out='';
+ groups.forEach(g=>{const list=files.filter(f=>f.startsWith(g)); out+=`<div class='group'><h4>${g} <span class='pill'>${list.length}</span></h4>${list.map(f=>`<div class='file'><span>${f}</span><button onclick="navigator.clipboard.writeText('${f.replace(/'/g,"\\'")}')">Copy</button></div>`).join('')||'<div style="font-size:12px;color:#88a">No files</div>'}</div>`}); $('evidence').innerHTML=out}
+
+$('chatMsg').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')sendChat()});
+$('target').addEventListener('change',savePrefs); $('scope').addEventListener('change',savePrefs);
+renderScanRows(); loadPrefs();
+</script>
+</body>
+</html>
