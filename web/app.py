@@ -11,7 +11,7 @@ from modules.nuclei_safe import run_nuclei_safe
 from modules.oauth import oauth_check
 from modules.recon_pipeline import run_recon_pipeline
 from core.report import create_report_from_evidence
-from modules.scope_builder import create_scope_from_text
+from modules.scope_builder import create_scope_from_text, use_scope, list_scopes
 from modules.replay_engine import replay_diff
 from modules.finding_ranker import rank_findings
 from web.agent import model_parse
@@ -61,7 +61,14 @@ def run_rank(req: RankRequest): _v(req.target, req.scope); return rank_findings(
 @app.post('/api/report-auto')
 def report_auto(req: ReportRequest): return {'report': create_report_from_evidence(req.finding, req.target)}
 @app.post('/api/scope/from-chat')
-def scope_from_chat(req: ScopeFromChatRequest): return create_scope_from_text(req.program, req.message, save=True)
+def scope_from_chat(req: ScopeFromChatRequest): return create_scope_from_text(req.program, req.message, save=True, use_active=req.use_active)
+@app.post('/api/scope/use')
+def scope_use(req: ScopeUseRequest):
+    path = use_scope(req.program)
+    return {'active_scope': path, 'program': req.program}
+@app.get('/api/scope/list')
+def scope_list():
+    return {'scopes': list_scopes(), 'active_scope': 'scope.yaml'}
 
 @app.post('/api/chat')
 def chat(req: ChatRequest):

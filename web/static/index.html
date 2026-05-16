@@ -1,33 +1,56 @@
 <!doctype html><html><head><meta charset='utf-8'/><title>Legion Command Center</title>
 <style>
-body{margin:0;background:#0a0f16;color:#d8f3ff;font-family:Inter,Segoe UI,Arial}.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-.side{background:#0d1522;padding:16px;border-right:1px solid #21314a}.side h2{color:#7cf0ff}.side div{padding:8px 0;color:#9ec6df}
-.main{display:flex;flex-direction:column}.top{display:flex;gap:8px;padding:10px;border-bottom:1px solid #21314a;background:#0f1a2a;flex-wrap:wrap}
-input,textarea,button{background:#111d30;color:#d8f3ff;border:1px solid #2d4363;border-radius:8px;padding:8px}button{cursor:pointer}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:12px}.card{background:#0f1a2a;border:1px solid #243a58;border-radius:12px;padding:12px}
-pre{background:#060b12;border-radius:8px;padding:10px;max-height:260px;overflow:auto}.chat{max-height:280px;overflow:auto}
-.msg{margin:8px 0;padding:8px;border-radius:10px}.u{background:#17365b}.a{background:#1f2937}.row{display:flex;gap:8px;flex-wrap:wrap}
-@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}}
+:root{--bg:#060b14;--panel:rgba(13,23,40,.62);--line:#2e5fa455;--txt:#d6eeff;--muted:#8fb8de;--neon:#34c3ff;--ok:#4cffb0;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 75% -10%,#133b6d66,transparent),linear-gradient(180deg,#050913,#090f1a 50%,#070d15);color:var(--txt);font-family:Inter,Segoe UI,Arial}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}.side{padding:14px;border-right:1px solid var(--line);background:linear-gradient(180deg,#0b1525cc,#0a1220cc);backdrop-filter:blur(8px)}
+.side h2{margin:6px 0 14px;color:var(--neon);text-shadow:0 0 12px #34c3ff66}.side div{padding:7px 0;color:#9ec7e9;font-size:13px}
+.main{display:flex;flex-direction:column}.top{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line);background:#0b1627c9;backdrop-filter:blur(7px);flex-wrap:wrap;position:sticky;top:0;z-index:3}
+input,textarea,button,select{background:#0d1a2dcc;color:var(--txt);border:1px solid #2a5288;border-radius:10px;padding:8px;font-size:13px}
+button{cursor:pointer;transition:.15s;box-shadow:0 0 0 #000}button:hover{border-color:var(--neon);box-shadow:0 0 12px #34c3ff55}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;padding:10px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;backdrop-filter:blur(10px);box-shadow:inset 0 0 35px #72b8ff11}
+.card h3{margin:0 0 8px;font-size:14px;color:#c5ebff}.compact p,.compact small{margin:4px 0;color:var(--muted);font-size:12px}
+pre{background:#050a12cf;border-radius:10px;padding:8px;max-height:220px;overflow:auto;border:1px solid #1e385e66}
+.row{display:flex;gap:6px;flex-wrap:wrap}.pill{display:inline-block;padding:3px 9px;border:1px solid #2f5f98;border-radius:999px;font-size:11px;color:#b5e1ff}
+.progressWrap{display:grid;gap:7px}.bar{height:7px;border-radius:8px;background:#10233ecc;border:1px solid #224a7c}.bar > span{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#1694ff,#6df5ff)}
+#aiDock{position:fixed;right:16px;bottom:16px;width:360px;max-height:72vh;z-index:20;border:1px solid #2a5d95;background:#0a1526e8;border-radius:14px;backdrop-filter:blur(12px);box-shadow:0 0 30px #2ec4ff36}
+#aiDock .head{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line)}
+#aiDock .chat{max-height:280px;overflow:auto;padding:8px}.msg{margin:7px 0;padding:8px;border-radius:10px;font-size:13px}.u{background:#13416e}.a{background:#1b2e44}
+#aiDock textarea{width:100%;min-height:72px}#aiDock .actions{padding:8px;display:grid;gap:6px}
+@media(max-width:980px){.app{grid-template-columns:1fr}.side{display:none}#aiDock{width:calc(100vw - 20px);right:10px;bottom:10px}}
 </style></head><body>
 <div class='app'>
-<aside class='side'><h2>Legion</h2><div>Overview</div><div>Recon</div><div>Traffic Intelligence</div><div>JS Intel</div><div>API/Auth</div><div>IDOR/BOLA</div><div>GraphQL</div><div>OAuth</div><div>Nuclei</div><div>Evidence</div><div>Reports</div><div>Legion Agent</div></aside>
+<aside class='side'><h2>LEGION // SOC</h2><div>Overview</div><div>Recon</div><div>Traffic Intel</div><div>JS Intel</div><div>API/Auth</div><div>IDOR/BOLA</div><div>GraphQL</div><div>OAuth</div><div>Nuclei</div><div>Evidence</div><div>Reports</div><div>Scope Builder</div></aside>
 <main class='main'>
 <div class='top'>
-<input id='target' placeholder='Single Target URL / Domain' style='min-width:280px'/><input id='scope' value='scope.yaml' placeholder='scope file'/>
-<span id='status'>● Idle</span><button onclick='loadTools()'>Load Tools</button><button onclick='runRecon()'>Run Recon</button><button onclick='aiNext()'>AI Decide Next</button>
-<button onclick='copyOutput()'>Copy Output</button><button onclick='clearLogs()'>Clear Logs</button>
+<input id='target' placeholder='Target URL / Domain' style='min-width:260px'/><input id='scope' value='scope.yaml' placeholder='scope file'/>
+<span class='pill' id='status'>● Idle</span><span class='pill' id='activeScope'>Current active scope: scope.yaml</span>
+<button onclick='loadTools()'>Load Tools</button><button onclick='runRecon()'>Run Recon</button><button onclick='copyOutput()'>Copy Output</button>
 </div>
 <div class='grid'>
-<div class='card'><h3>Overview</h3><pre id='cards'>{}</pre></div>
-<div class='card'><h3>Traffic Panel</h3><p>Browser → Burp/Caido Proxy → Export → Import</p><input id='burpFile' placeholder='Burp XML path'/><input id='caidoFile' placeholder='Caido JSON path'/><div class='row'><button onclick='importBurp()'>Import Burp</button><button onclick='importCaido()'>Import Caido</button><button onclick='trafficSummary()'>Traffic Summary</button></div><small>Dashboard port: 9000, Proxy: 8080/8081</small></div>
-<div class='card'><h3>Module Actions</h3><input id='jsUrl' placeholder='JS URL'/><input id='urlsFile' placeholder='URLs file'/><input id='graphqlEndpoint' placeholder='GraphQL endpoint'/><input id='oauthUrl' placeholder='OAuth URL'/><input id='replayFile' placeholder='Replay file'/><input id='finding' placeholder='Finding name'/><div class='row'><button onclick='runJs()'>JS URL</button><button onclick='runNuclei()'>Nuclei Safe</button><button onclick='runGraphql()'>GraphQL</button><button onclick='runOauth()'>OAuth</button><button onclick='runIdor()'>IDOR Plan</button><button onclick='runReport()'>Report</button></div></div>
-<div class='card'><h3>JSON Results</h3><pre id='results'>{}</pre></div>
-<div class='card'><h3>Terminal</h3><pre id='logs'>Ready.</pre></div>
-<div class='card'><h3>Legion Agent</h3><div id='chat' class='chat'></div><textarea id='chatMsg' placeholder='Ask Legion what to test next on this target...'></textarea><div class='row'><button onclick='sendChat()'>Send</button><button id='confirmBtn' onclick='confirmAction()' disabled>Confirm Pending</button><button id='runSuggestedBtn' onclick='runSuggested()' disabled>Run Suggested Action</button></div></div>
+<div class='card compact'><h3>SOC Overview</h3><pre id='cards'>{}</pre></div>
+<div class='card compact'><h3>Scan Progress</h3><div class='progressWrap'>
+<div><small>Recon pipeline</small><div class='bar'><span id='pRecon' style='width:5%'></span></div></div>
+<div><small>Traffic ingestion</small><div class='bar'><span id='pTraffic' style='width:0%'></span></div></div>
+<div><small>Analysis coverage</small><div class='bar'><span id='pAnalyze' style='width:0%'></span></div></div>
+</div></div>
+<div class='card compact'><h3>Traffic Panel</h3><input id='burpFile' placeholder='Burp XML path'/><input id='caidoFile' placeholder='Caido JSON path'/><div class='row'><button onclick='importBurp()'>Import Burp</button><button onclick='importCaido()'>Import Caido</button><button onclick='trafficSummary()'>Traffic Summary</button></div></div>
+<div class='card compact'><h3>Module Actions</h3><input id='jsUrl' placeholder='JS URL'/><input id='urlsFile' placeholder='URLs file'/><input id='graphqlEndpoint' placeholder='GraphQL endpoint'/><input id='oauthUrl' placeholder='OAuth URL'/><input id='replayFile' placeholder='Replay file'/><input id='finding' placeholder='Finding name'/><div class='row'><button onclick='runJs()'>JS</button><button onclick='runNuclei()'>Nuclei</button><button onclick='runGraphql()'>GraphQL</button><button onclick='runOauth()'>OAuth</button><button onclick='runIdor()'>IDOR</button><button onclick='runReport()'>Report</button></div></div>
+<div class='card compact'><h3>Scope Builder</h3><input id='scopeProgram' placeholder='Program name'/><textarea id='scopeText' placeholder='Paste bounty scope/rules/description' style='min-height:110px'></textarea><div class='row'><button onclick='extractScopePreview()'>Extract Scope Preview</button><button onclick='saveScope()'>Save Scope</button><button onclick='useScopeActive()'>Use Active</button></div><pre id='scopePreview'>{}</pre></div>
+<div class='card compact'><h3>Results</h3><pre id='results'>{}</pre></div>
+<div class='card compact'><h3>Terminal</h3><pre id='logs'>Ready.</pre></div>
 </div></main></div>
+
+<div id='aiDock'>
+<div class='head'><strong style='color:var(--neon)'>AI Operator</strong><button onclick='toggleChat()' id='dockBtn'>Hide</button></div>
+<div id='dockBody'>
+<div id='chat' class='chat'></div>
+<div class='actions'><textarea id='chatMsg' placeholder='Ask Legion what to test next...'></textarea><div class='row'><button onclick='sendChat()'>Send</button><button onclick='aiNext()'>AI Next</button><button id='confirmBtn' onclick='confirmAction()' disabled>Confirm Pending</button><button id='runSuggestedBtn' onclick='runSuggested()' disabled>Run Suggested</button><button onclick='clearLogs()'>Clear Logs</button></div></div>
+</div></div>
+
 <script>
 const $=id=>document.getElementById(id); let sessionId=null; let pending=false; let lastAgent=null;
 function setStatus(s){$('status').textContent='● '+s} function log(t){$('logs').textContent=t}
+function setProgress(el,v){$(el).style.width=Math.max(0,Math.min(100,v))+'%'}
 function savePrefs(){localStorage.setItem('legion_target',$('target').value);localStorage.setItem('legion_scope',$('scope').value)}
 function loadPrefs(){ $('target').value=localStorage.getItem('legion_target')||''; $('scope').value=localStorage.getItem('legion_scope')||'scope.yaml'; }
 async function call(path,method='GET',body=null){savePrefs();setStatus('Loading');
@@ -35,15 +58,15 @@ async function call(path,method='GET',body=null){savePrefs();setStatus('Loading'
   }catch(e){log('Request failed '+e);return null}finally{document.querySelectorAll('button').forEach(b=>b.disabled=false); $('confirmBtn').disabled=!pending; $('runSuggestedBtn').disabled=!(lastAgent && lastAgent.safety_level==='safe' && lastAgent.intent && lastAgent.intent!=='none'); setStatus('Idle')}
 }
 async function loadTools(){const j=await call('/api/tools'); if(!j)return; const t=j.tools||[]; const ins=t.filter(x=>x.installed).length; $('cards').textContent=JSON.stringify({installed_tools:ins,missing_tools:t.length-ins,current_target:$('target').value},null,2)}
-function runRecon(){call('/api/run/recon-pipeline','POST',{target:$('target').value,scope:$('scope').value})}
-function runJs(){call('/api/run/js-url','POST',{target:$('target').value,scope:$('scope').value,url:$('jsUrl').value,ai_summary:false})}
-function runNuclei(){call('/api/run/nuclei-safe','POST',{target:$('target').value,scope:$('scope').value,urls_file:$('urlsFile').value})}
+function runRecon(){setProgress('pRecon',35);call('/api/run/recon-pipeline','POST',{target:$('target').value,scope:$('scope').value}).then(()=>setProgress('pRecon',100))}
+function runJs(){setProgress('pAnalyze',35);call('/api/run/js-url','POST',{target:$('target').value,scope:$('scope').value,url:$('jsUrl').value,ai_summary:false}).then(()=>setProgress('pAnalyze',66))}
+function runNuclei(){setProgress('pAnalyze',78);call('/api/run/nuclei-safe','POST',{target:$('target').value,scope:$('scope').value,urls_file:$('urlsFile').value}).then(()=>setProgress('pAnalyze',100))}
 function runGraphql(){call('/api/run/graphql-analyze','POST',{target:$('target').value,scope:$('scope').value,endpoint:$('graphqlEndpoint').value})}
 function runOauth(){call('/api/run/oauth-check','POST',{target:$('target').value,scope:$('scope').value,url:$('oauthUrl').value})}
 function runIdor(){call('/api/run/idor-plan','POST',{target:$('target').value,scope:$('scope').value,replay_file:$('replayFile').value})}
 function runReport(){call('/api/report-auto','POST',{target:$('target').value,finding:$('finding').value})}
-function importBurp(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Burp traffic from '+$('burpFile').value,session_id:sessionId})}
-function importCaido(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Caido traffic from '+$('caidoFile').value,session_id:sessionId})}
+function importBurp(){setProgress('pTraffic',45);call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Burp traffic from '+$('burpFile').value,session_id:sessionId}).then(()=>setProgress('pTraffic',100))}
+function importCaido(){setProgress('pTraffic',50);call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'Import Caido traffic from '+$('caidoFile').value,session_id:sessionId}).then(()=>setProgress('pTraffic',100))}
 function trafficSummary(){call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:'traffic summary',session_id:sessionId})}
 function bubble(role,text){const d=document.createElement('div'); d.className='msg '+(role==='user'?'u':'a'); d.textContent=text; $('chat').appendChild(d); $('chat').scrollTop=$('chat').scrollHeight;}
 async function sendChat(){const msg=$('chatMsg').value.trim(); if(!msg)return; bubble('user',msg); const j=await call('/api/chat','POST',{target:$('target').value,scope:$('scope').value,message:msg,session_id:sessionId}); if(!j)return; sessionId=j.session_id||sessionId; pending=!!j.confirmation_required; $('confirmBtn').disabled=!pending; lastAgent=j; bubble('assistant',`${j.assistant_message}\nintent=${j.intent}\nsafety=${j.safety_level}`)}
@@ -51,5 +74,11 @@ async function aiNext(){ $('chatMsg').value='What should I test next on this tar
 async function runSuggested(){ if(!lastAgent || lastAgent.safety_level!=='safe') return; const intent=lastAgent.intent; if(intent==='run_recon_pipeline') return runRecon(); if(intent==='analyze_js_url') return runJs(); if(intent==='run_nuclei_safe') return runNuclei(); if(intent==='analyze_graphql') return runGraphql(); if(intent==='check_oauth') return runOauth(); if(intent==='generate_idor_plan') return runIdor(); if(intent==='generate_report_from_evidence') return runReport(); }
 async function confirmAction(){if(!sessionId)return; const j=await call('/api/chat/confirm','POST',{session_id:sessionId}); pending=false; $('confirmBtn').disabled=true; bubble('assistant',j.assistant_message||'confirmed')}
 function copyOutput(){navigator.clipboard.writeText($('results').textContent)} function clearLogs(){$('logs').textContent='cleared'}
+function toggleChat(){const b=$('dockBody'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; $('dockBtn').textContent=hidden?'Hide':'Show';}
+
+async function extractScopePreview(){const j=await call('/api/scope/from-chat','POST',{program:$('scopeProgram').value,message:$('scopeText').value,use_active:false}); if(j){$('scopePreview').textContent=JSON.stringify(j,null,2); const dom=(j.allowed_domains||[])[0]; if(dom)$('target').value=dom; $('scope').value=j.scope_file||$('scope').value;}}
+async function saveScope(){const j=await call('/api/scope/from-chat','POST',{program:$('scopeProgram').value,message:$('scopeText').value,use_active:false}); if(j){$('scopePreview').textContent=JSON.stringify(j,null,2); $('scope').value=j.scope_file||$('scope').value;}}
+async function useScopeActive(){const program=$('scopeProgram').value; const j=await call('/api/scope/use','POST',{program}); if(j){$('activeScope').textContent='Current active scope: '+j.active_scope; $('scope').value=j.active_scope;}}
+
 $('chatMsg').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')sendChat()}); loadPrefs();
 </script></body></html>

@@ -268,3 +268,16 @@ Safety:
 - approval actions require `/api/chat/confirm` in UI
 - manual/risky intents return checklist-style guidance
 - secrets are masked before model prompts
+
+## Auto-create scope.yaml from bug bounty program text
+
+Use the Scope Builder in dashboard or CLI to extract scope rules from pasted program text.
+
+### CLI examples
+
+- `python3 main.py scope-from-text hackerone-acme --file program_scope.txt`
+- `python3 main.py scope-use hackerone-acme`
+- `python3 main.py scope-list`
+- `python3 main.py scope-show hackerone-acme`
+
+The extracted file is saved as `scopes/<program>.yaml`, and `scope-use` copies it to `scope.yaml` for active validation.

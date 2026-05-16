@@ -36,3 +36,10 @@ def test_security_workflow_command_exists():
 def test_rank_findings_command_exists():
     r = run_cmd(['--help'])
     assert 'rank-findings' in r.stdout
+
+
+def test_scope_management_commands_exist():
+    r = run_cmd(['--help'])
+    assert 'scope-use' in r.stdout
+    assert 'scope-list' in r.stdout
+    assert 'scope-show' in r.stdout
